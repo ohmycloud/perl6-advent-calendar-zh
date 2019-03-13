@@ -1,0 +1,180 @@
+# [第十四天-在 Perl 6 中构建和测试 Big Grammars](https://perl6advent.wordpress.com/2017/12/14/day-14-the-little-match-girl-building-and-testing-big-grammars-in-perl-6/)
+
+Perl 6 Grammars 很棒，但在项目中使用它们会是什么样呢？在圣诞节前和圣诞节后，我的经历是一个令人心酸的故事。你可以在[这里](https://github.com/albastev/Grammar-Modelica/tree/parse_modelica_library)找到版本库。我不是来自计算机科学背景，所以也许它看起来很简陋，但是当我学习 Perl 6 Grammars 时，这是我的困难和胜利。
+
+## 第一根火柴
+
+就像卖火柴的小女孩一样，我们的故事发生在圣诞节前。卖火柴的小女孩的任务是在圣诞节前夕销售一捆火柴棍（实际上是新年，我确实回去读了那个故事。圣诞节更适合 Perl 6），而我的任务是从 Modelica 模型中提取注释渲染为矢量图形。现在，Modelica 是一个非常棒的面向对象的建模语言，除了提及其附录中包含一个具体语法部分的非常好的[规范文档](https://www.modelica.org/documents/ModelicaSpec34.pdf)（pdf）之外，我将完全理解它。仔细阅读本节，我意识到“语法元符号”和“词法单位”看起来像我最近读过的一篇博客文章中的 Perl 6 Grammars，并且急于尝试。
+
+来自 Modelica 的示例具体语法：
+
+```
+class-definition :
+[ encapsulated ] class-prefixes
+class-specifier
+```
+
+Perl 6 **rule** 的示例:
+
+```perl6
+rule class_definition {
+  [<|w>'encapsulated'<|w>]? 
+  <class_prefixes>
+  <class_specifier>
+}
+```
+
+这就像卖火柴的小女孩划第一颗火柴一样，第一次看到了一个超越她现实的奇妙世界。一个温暖的小炉子。然后它熄灭了。
+
+它非常接近，我把它放到了一个文本编辑器中，并且用一些 Perl 6 的东西替换了不是 Perl 6 的部分，以查看它是否会运行。它没有运行。我砍掉了它，我指出了不同的位来解决更小的块。无处不在的空白符号，正则表达式，标记，规则。我能够解析某些部分，其他部分神秘地没有起效。回顾过去，这一定很糟糕。与此同时，我们一起破解传统的正则表达式来提取注释，并将我的 Grammar 放在架子上。
+
+## 第二根火柴
+
+不久之后，发布了 Grammar::Profiler 和 Grammar::Debugger，并且我受到启发，决定再试一试。我被授予了对我的规则出乎意料表现的很好的见解。我能够比以前更深入地理解 grammar。第二支火柴一直亮着，我有一场盛宴。然后它熄灭了。
+
+在调试器中，我陷入了回溯的深渊。分析器一直运行，因为它一次又一次地陷入泥潭。我能够走得更远，但最终遇到了一堵墙。成功似乎非常接近，但我自己的经历中有太多缺失的部分，并且有文档让我度过难关。
+
+## 第三根火柴
+
+时间流逝，圣诞节来了。我有了新的职位，有时间做个人项目。我有不断改进的 [Grammar 文档](https://docs.perl6.org/language/grammars)来指导我。我已经阅读了使用遗留代码高效工作的书。这足以让我再次迎难而上。
+
+
+## 面向对象
+
+这对我来说是最大的突破。当我从文档中了解到 Tokens，rules 和  regex 都是有趣的外观方法时，我突然发现了所有的东西。当我回到家时，我立即检查我是否可以重写 TOP，并检查是否可以将 Grammar 方法变为 role。两人都很愉快地工作，而且我在做生意。我可以把它分成块，而不是一个单一的，全有或全无的 grammar。这极大地改进了代码的组织和可测试性。
+
+其中一个特别突出的问题是，我能够将 Grammar 整齐地分解成与 Modelica 规范中相应的角色。
+
+```
+lib
+----Grammar
+--------Modelica
+------------LexicalConventions.pm6
+------------ClassDefinition.pm6
+------------Extends.pm6
+------------ComponentClause.pm6
+------------Modification.pm6
+------------Equations.pm6
+------------Expressions.pm6
+--------Modelica.pm6
+```
+
+**Unit testing: one layer at a time**
+
+面向对象开辟了一个明智的单元测试方案，并通过将Modelica的部分内容传递到语法中，使我摆脱了临时测试的无稽之谈。您可以像继承其他任何类一样继承和重写语法。这允许您分别测试每个规则或标记，将您的语法分割为一口大小的层。您只需使用要测试的规则或标记覆盖TOP，并使用占位符方法覆盖任何依赖关系。
+
+Expressions.pm6中表达式的定义：
+
+```perl6
+rule expression {
+  [
+  <|w>'if'<|w> <expression> <|w>'then'<|w> <expression> [
+  <|w>'elseif'<|w> <expression> <|w>'then'<|w> <expression>
+  ]*
+  <|w>'else'<|w> <expression>
+  ]
+  ||
+  <simple_expression>
+}
+```
+
+这里我们看到表达式取决于它自己和simple_expression。为了测试，我们用一个占位符替换了通常的simple_expression规则。在这种情况下，它只是匹配字符串'simple_expression'。
+
+从Expressions.t覆盖测试语法：
+
+```perl6
+grammar TestExpression is Grammar::Modelica {
+    rule TOP {^ <expression> $}
+    rule simple_expression { 'simple_expression' }
+}
+ok TestExpression.parse('simple_expression');
+...
+```
+
+当你可以分离代码中有问题的部分时，回归测试也会更加愉快，并创建一个专门针对它的重写语法。
+
+## <|w> is your friend
+
+在我的第一次努力中，试图让Modelica保留字等正常工作的东西是我“存在的一些障碍”之一。在找到单词边界匹配标记<| w>后，这个改变了。当我在每边击打一个时，它可以工作，无论是在空白区还是标点符号旁边。
+
+从ComponentClause.pm6：
+
+```perl6
+rule type_prefix {
+  [<|w>[ 'flow' || 'stream' ]<|w>]?
+  [<|w>[ 'discrete' || 'parameter' || 'constant' ]<|w>]?
+  [<|w>[ 'input' || 'output' ]<|w>]?
+}
+```
+
+### Token, rule and regex
+
+现在有很好的文档，但是我也会简要介绍一下我的经验。我发现规则和它的：sigspace魔术是大多数时候最好的选择。令牌在需要严格控制格式的情况下很有用。
+
+正则表达式用于回溯。对于Modelica，我发现它是无益的，可能是因为它被设计成单通口语。令牌和规则在我认为我需要的地方工作。所有的单元测试都在我将它们删除后通过，并且语法成功了四个Modelica标准库文件。只有在需要时才使用它。
+
+### 以开始结束
+
+另一个让我感到沮丧的是类定义语法。 Modelica使用形式some_identifier ...结束some_identifier的类。如何确保在开始和结束时使用相同的标识符对我来说很麻烦。幸运的是，Perl 6允许您在语法方法中使用捕获。下面的（<IDENT>）捕获将填充$ 0，然后可以用它来确保我们的long_class_specifier以适当的标识符结束。
+
+```perl6
+rule long_class_specifier {
+  [(<IDENT>) <string_comment> <composition> <|w>'end'<|w> $0 ]
+  ||
+  [<|w>'extends'<|w> (<IDENT>) <class_modification>? <string_comment> <composition> <|w>'end'<|w> $0 ]
+}
+```
+
+**Integration Testing: lighting all the matches at once**
+
+在我的单元测试全部过去后，我感到有点不安。当然，它可以解析我设计的测试案例，但它对真正的Modelica会如何呢？颤抖的手，我从他的Modelica电子书中提供了一些Michael Tiller的示例代码。有效！没有摆弄我忽略的微妙东西，没有有趣的解析错误或永恒的回溯。只是成功。
+
+现在，星星偶尔会对齐。奇迹确实发生。充分巧妙的单元测试可以非常好地预防错误。我已经有足够的时间来验证了。回顾Damian Conway的演讲，我决定针对整个Modelica标准库运行它。并不是所有的CPAN，但305个文件都比我迄今尝试过的仅仅两个示例模型要好。
+
+我编写了脚本，将它指向了Modelica目录，并将它解雇了。它通过图书馆搅动，喘息一下。 150次失败。现在这是熟悉的领域。经过几次迭代后，当我在parse_modelica_library分支上运行它时，我的性能下降到了66次。我只是通过一个失败的文件，找出有问题的代码，并为其编写回归测试。
+
+所以，最后小火柴女郎点燃了她捆绑的其余部分。然后，她死了。不要死，但可以同时点亮所有305场比赛，例如/ parseThemAll.p6：
+
+```perl6
+#!perl6
+
+use v6;
+use Test;
+use lib '../lib';
+use Grammar::Modelica;
+
+
+plan 305;
+
+sub light($file) {
+  my $fh = open $file, :r;
+  my $contents = $fh.slurp-rest;
+  $fh.close;
+
+  my $match = Grammar::Modelica.parse($contents);
+  say $file;
+  ok $match;
+}
+
+sub MAIN($modelica-dir) {
+    say "directory: $modelica-dir";
+    die "Can't find directory" if ! $modelica-dir.IO.d;
+
+    # modified from the lovely docs at
+    # https://docs.perl6.org/routine/dir
+    my @stack = $modelica-dir.IO;
+    my @files;
+    while @stack {
+      for @stack.pop.dir -> $path {
+        light($path) if $path.f && $path.extension.lc eq 'mo';
+        @stack.push: $path if $path.d;
+      }
+    }
+    # faster to do in parallel
+    @files.race.map({light($_)});
+}
+```
+
+我会看到在圣诞节前我能说服多少。那么也许我会弄清楚如何编写一些规则来构建QAST。
+
+圣诞节快乐！

@@ -1,0 +1,126 @@
+# [第七天 – Test All The Things](https://perl6advent.wordpress.com/2017/12/07/day-7-test-all-the-things/)
+
+Perl 6 与其大姐姐 Perl 5一样，具有很悠久的测试传统。当您安装任何 Perl 模块时，安装程​​序通常会运行该模块的测试套件。当然，作为新兴的 Perl 6 模块作者，您需要创建自己的测试套件。或者，也许你会在创建模块**之前**勇于创建测试套件。这实际上有几个好处，其中最主要的是你的第一个用户，甚至在它被写之前。
+
+但在实际代码之前，我想提一下我经常使用的两个 shell 别名 - 
+
+```shell
+alias 6='perl6 -Ilib'
+alias 6p="prove -e'perl6 -Ilib'"
+```
+
+这些别名使我可以快速运行测试文件，而不必去安装我的代码。如果我在项目目录中，我可以运行
+
+```shell
+$ 6 t/01-core.t
+ok 1 - call with number
+ok 2 - call with text
+ok 3 - call with formatted string
+1..3
+```
+
+它会告诉我我运行了哪些测试以及它们是否全部通过。就像它的大姐姐Perl 5一样，Perl 6使用't /'目录作为测试文件，并按照惯例使用后缀'.t'来区分测试文件和软件包或脚本。它还有一个内置的单元测试模块，我们在上面使用。如果我们正在测试sprintf（）内部，它可能看起来像
+
+```perl6
+use Test;
+
+ok sprintf(1), 'call with number';
+ok sprintf("text"), 'call with text';
+ok sprintf("%d",1), 'call with formatted string';
+
+done-testing;
+```
+
+ok和done-testing功能会自动导出给我们。我在这里使用规范的Perl 6风格，而不是太依赖括号。在这种情况下，我确实需要使用圆括号来确保sprintf（）不会“认为”“空调用”是它的参数。
+
+OK只需要两个参数，你想要测试的真实性，以及一个可选的消息。如果第一个参数是任何评估为True的东西，则测试通过。否则......你知道。该消息只是描述测试的文本。它纯粹是可选的，但当测试失败时它可以很方便，因为您可以在测试文件中搜索该字符串并快速找到问题。不过，如果你像作者一样，行号更有价值，所以当你看到的时候
+
+```perl6
+not ok 1 - call with number
+# Failed test 'call with number'
+# at test.t line 4
+ok 2 - call with text
+ok 3 - call with formatted string
+1..3
+```
+
+在您的测试中，您可以立即跳转到测试文件的第4行并开始编辑以找出问题所在。当你的测试文件变得越来越大时，这会变得更有用，例如我正在编写的Common Lisp版本（格式）的测试，每个测试文件超过200个测试并且不断增长。
+
+最后，完成测试只是告诉测试模块我们已经完成了测试，没有更多的测试来了。当你刚刚开始时，这很方便，你不断尝试你的API，添加和更新测试。没有测试计数器来更新每次或任何其他机制来跟踪。
+
+当然，这是可选的，但其他工具可能会在最后使用'1..3'来证明您的测试实际上已经完成。 Jenkins的单元测试和其他系统也可能需要这个工具。
+
+## It depends…
+
+你对'是'的定义是什么。如果你只关心某件事情的真实性，好的测试是好的，但有时你需要深入一点。 Perl 6就像它的大姐姐一样可以帮助你。
+
+```perl6
+is 1 + 1, 2, 'prop. 54.43, Principia Mathematica';
+```
+
+不只是检查你的测试的真实性，它会检查它的价值。虽然你可以很容易地写这个
+
+```
+ok 1 + 1 == 2, 'prop. 54.43, Principia Mathematica';
+```
+
+使用是使你的意图明确，你关注的是表达式1 + 1是否等于2;与同一语句的ok版本一样，目前还不清楚您是在测试'1 + 1'部分还是'=='运算符。
+
+这两个测试本身可能占据您测试需求的80％，处理基本列表和哈希时相对安全，如果您真的需要复杂的测试，那么它的大姐姐正在站在脚边，准备处理复杂的哈希阵列组合。
+
+## 懒惰和不耐烦
+
+有时你会有一个巨大的字符串，你只需要检查一下它。
+
+
+```
+ok 'Lake Char­gogg­a­gogg­man­chaugg­a­gogg­chau­bun­a­gung­a­maugg' ~~ 'manchau', 'my side';
+```
+
+你当然可以在这里使用~~运算符。就像'1 + 1 == 2'一样，但是你的意图可能并不明确。你可以使用类似的方法来明确你的意图。
+
+```
+like 'Lake Char­gogg­a­gogg­man­chaugg­a­gogg­chau­bun­a­gung­a­maugg',
+     /manchau/, 'my side';
+```
+
+并没有~~悬在你的船边。
+
+
+## 晾干
+
+在美丽的Lake Chargoggagoggmanchauggagoggchaubunagungamaugg度过一段时间后，你可能想把你的衣服拧干。测试文件往往会增长，特别是回归测试。你可能会发现自己写作
+
+```
+is sprintf( "%s", '1' ), '1', "%s formats numbers";
+is sprintf( "%s", '⅑' ), '⅑', "%s formats fractions";
+is sprintf( "%s", 'Ⅷ' ), 'Ⅷ', "%s formats graphemes";
+is sprintf( "%s", '三' ), '三', "%s formats CJKV";
+```
+
+这很好，复制和粘贴（特别是从StackOverflow）是一个悠久的传统，没有错。不过考虑一下，当你使用“％d”而不是“％s”添加更多测试时会发生什么情况，并且由于所有这些字符串都是数字，因此您只需复制并粘贴该块，将“％s”更改为“％d”，然后继续。
+
+```
+is sprintf( "%s", '1' ), '1', "%s formats numbers';
+# ...
+
+is sprintf( "%d, '1' ), '1', "%d formats numbers';
+# ...
+```
+
+所以现在你已经有了两组测试，名称相同。而不是编辑所有新的“％d”测试，如果我们不必首先重复自己的话，这会不会很好？
+
+```perl6
+subtest '%s', {
+    is sprintf( "%s", '1' ), '1', "formats numbers";
+    is sprintf( "%s", '⅑' ), '⅑', "formats fractions";
+    is sprintf( "%s", 'Ⅷ' ), 'Ⅷ', "formats graphemes";
+    is sprintf( "%s", '三' ), '三', "formats CJKV";
+};
+```
+
+现在你只需要在两个地方而不是三个地方进行编辑。如果这激发了您对测试的兴趣，我鼓励您在我的个人网站上查看[测试所有事情](http://theperlfisher.blogspot.cz/2017/11/test-all-things.html)以获得更高级的测试范例和更高级的 Perl 6 代码。另外不要忘记关注明天的 Perl 6 Advent 发布！
+
+谢谢你，快乐的黑客！
+
+DrForr 又名 Jeff Goff，[Perl Fisher](http://theperlfisher.blogspot.cz/)

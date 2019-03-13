@@ -1,0 +1,388 @@
+# 第七天 – 细胞自动机
+
+今天的降临日历帖子涉及Cellular Automata。
+
+什么是细胞自动机？我很高兴你问！它们是由几个部分组成的系统：由细胞组成的一种场或“世界”，每个细胞可以在任何点处的一组状态，描述每个细胞可见的细胞的“邻域” ，以及一套规则，用于管理一个单元将其状态改变为什么状态以及其邻域中所有单元的状态。
+
+当然，这是一个非常抽象的描述，所以让我举一些个别部分的例子，希望能让你了解你在细胞自动机中看到的内容：
+
+在典型的世界中，你可能会发现细胞像串珠一样排列，或者像国际象棋或中国跳棋板上的字段。您还可以组成更多奇特的配置：任何二维场都可以映射到任何表面，例如[斯坦福兔子](https://en.wikipedia.org/wiki/Stanford_bunny)
+
+你可以在野外找到的状态集是“从0到n的数字”，“这里有细菌”，“黑白颜色”（或更多）。由于您基本上可以将任何信息表示为“数字”，并且允许任意数量的状态，因此还可以存在表示“此时此单元格中有多少粒子在上升，下降，向左或向右移动的状态？ “作为整数或甚至浮点数。
+
+邻域可以被认为是细胞“连接在一起”的模式。典型的社区将是“前面的一个，后面的一个”的“串珠”字段，以及“北，东，南，西”或“北，东北，东，东南，南，西南，西，西北“对于棋盘场 - 这两个分别是冯诺依曼附近和摩尔附近。
+
+管理每个单元的邻域中的状态的一组规则将导致哪个状态转到其他状态可被视为特定元胞自动机的核心。
+
+在今天的降临日历中，我们将探索您可能称之为最简单的自动机。我们将字段串起来像字符串上的珠子，我们将尝试一个或两个和一些不同的状态集。
+
+为了让家里的人感兴趣，我将为您提供链接，让您在浏览器中运行示例代码，或在家中使用您的本地perl6编译器！
+
+## 为学习而做
+
+让我们开始，然后：
+
+首先，我们需要什么？世界上必须有存储空间，需要一些代码来获得一个符合条件的邻居，以及一些代码来计算一个单元的下一个状态，给定它自己的状态和邻居的状态。最重要的是，我们想看看发生了什么，所以我们也有一些代码。
+
+在确定每个单元可以具有哪些状态之后，我们将知道什么存储适合于我们的世界。使用8位整数数组将允许我们从任何不超过255个单独状态的状态集中进行选择。不过，让我们现在共计3个州。我们可以随心所欲地初始化世界，但是将每个字段设置为随机有效状态是一个很好的起点。另一个是将一个状态的单个单元放在中间，并使每个其他单元具有不同的状态。
+
+```perl6
+constant number-of-states = 3;
+constant field-width = 60;
+
+my int8 @field;
+
+sub init-field {
+    @field = (^number-of-states).roll(field-width);
+}
+```
+
+显示字段非常简单，具体取决于我们使用的输出。 这是一段可以在任何控制台中运行的代码，下面是一个6pad的链接，它在pad的HTML部分输出很少的彩色方块。
+
+```perl6
+sub output-a-row {
+
+    for @field {
+        # Using the unicode characters "Light shade", "Medium shade", and "Dark shade"
+        # and printing each field twice so they look square rather than slim and tall.
+        print ["\x2591", "\x2592", "\x2593"][$_] x 2
+    }
+
+    say "";
+}
+
+init-field;
+output-a-row;
+```
+
+在[浏览器](https://perl6.github.io/6pad/#baa305eff795ed1f7a1957b83a9d4b26)中运行此代码。 你将不得不等待几秒钟来获得当前相当大的perl6编译器在javascript中。
+
+## 走在前面
+
+从单个行到单元格的自动机的模拟运行需要一次完成一大堆部分。
+
+根据他们的定义，细胞自动机将同时推进其所有细胞。 我们当然不会去云端获得拥有与我们领域中的单元一样多的cpu内核的机器。 我们将通过一个简单的循环遍历所有字段来解决“根据它们的相邻单元格在上一步中计算每个单元格的下一步”。
+
+对此的直接方法是在每个步骤之后有一个额外的字段来放置计算结果并将结果复制到“真实”字段数组中。 让我们尝试一下。
+
+```perl6
+sub simulate-step {
+    my int8 @output;
+
+    for ^field-width -> $x {
+        # do some calculations here
+    }
+    
+    @field = @output;
+}
+```
+
+让我们看看我们需要什么来进行计算：新状态将取决于邻域和单元本身。 我们可能会选择最明显的社区：一个小区，它是该领域的前身和继承者。 但等等，第一个和最后一个细胞会发生什么？ 让我们假装他们有一个额外的邻居，它总是处于0状态。这样
+
+```perl6
+sub simulate-step {
+    my int8 @output;
+  
+    for ^field-width -> $x {
+        my $left   = $x - 1 < 0 ?? 0 !! @field[$x - 1];
+        my $middle = @field[$x];
+        my $right  = $x + 1 >= field-width ?? 0 !! @field[$x + 1];
+        
+        # do some calculation with $left, $middle, and $right
+        # then push the result into @output
+    }
+    
+    @field = @output;
+}
+```
+
+所以，我们终于到了我们需要决定我们的细胞自动机实际上应该首先做什么的地方。 但是，当我们甚至没有赋予“0,1和2”状态的含义时，我们应该如何弄清楚它应该做什么？
+
+答案很简单！ 从字面上理解这一切。
+
+## 制作东西
+
+我的意思是，我们目前并不关心细胞自动机的作用，只要看起来不错。 那么为什么不预先通过滚动一些想象中的骰子来预先决定应该发生什么呢？
+
+为此目的，它有助于知道有多少可能的“配置”甚至是单元及其邻居所在的。幸运的是，这很简单。 您可以将三个单元格想象为由三位数组成的数字，并且每个数字都允许为0,1或2。
+
+```
+000  001  002
+010  011  012
+020  021  022
+100  101  102
+110  111  112
+120  121  122
+200  201  202
+210  211  212
+220  221  222
+```
+
+如果我没有陷入困境，那就是左，中，右单元组成的所有可能性。 就像四位二进制数可以是2⁴数之一一样，这个三位三进制数可以是  3³。 这意味着我们只需要在0到2之间选择  3³ 个数字，上面表格中每个数字一个。
+
+这样做真的很愉快！
+
+```perl6
+my int8 @lookup-table = (^number-of-states).roll(3³);
+```
+
+并且给定 `$left`，`$middle` 和 `$right` 变量，我们可以将第一个与9相乘，第二个与3相乘，并将三者相加以获得查询表中的索引：
+
+```perl6
+sub simulate-step {
+    my int8 @output;
+  
+    for ^field-width -> $x {
+        my $left   = $x - 1 < 0 ?? 0 !! @field[$x - 1];
+        my $middle = @field[$x];
+        my $right  = $x + 1 >= field-width ?? 0 !! @field[$x + 1];
+        
+        my $index = $left * 9 + $middle * 3 + $right;
+        
+        @output.push(@lookup-table[$index]);
+    }
+    
+    @field = @output;
+}
+```
+
+运行这个已经让我们看起来很闪亮。 我们需要做的就是连接潜艇：
+
+```perl6
+constant number-of-states = 3;
+constant field-width = 60;
+
+my int8 @field;
+
+sub init-field {
+    @field = (^number-of-states).roll(field-width);
+}
+init-field;
+
+sub output-a-row {
+
+    for @field {
+        # Using the unicode characters "Light shade", "Medium shade", and "Dark shade"
+        # and printing each field twice so they look square rather than slim and tall.
+        print ["\x2591", "\x2592", "\x2593"][$_] x 2
+    }
+
+    say "";
+}
+
+my int8 @lookup-table = (^number-of-states).roll(3³);
+
+sub simulate-step {
+    my int8 @output;
+  
+    for ^field-width -> $x {
+        my $left   = $x - 1 < 0 ?? 0 !! @field[$x - 1];
+        my $middle = @field[$x];
+        my $right  = $x + 1 >= field-width ?? 0 !! @field[$x + 1];
+        
+        my $index = $left * 9 + $middle * 3 + $right;
+        
+        @output.push(@lookup-table[$index]);
+    }
+    
+    @field = @output;
+}
+
+for ^100 {
+    simulate-step;
+    output-a-row;
+}
+```
+
+结果在某些时候看起来非常有趣！ 当然，我们需要通过随机查找表获得幸运。 如果你有很多无趣的东西，我喜欢这里的一个：
+
+```perl6
+my int8 @lookup-table = <0 0 2 0 0 0 1 2 0 0 1 1 2 1 1 2 1 1 1 0 1 2 2 0 2 1 1>;
+```
+
+这里是[6pad](https://perl6.github.io/6pad/#cb1856d301959e3d3dca95925eab2bee)的链接，您可以在浏览器中试用它。
+
+第三，这是我的机器的截图，以防您在移动设备上阅读或其他无法运行perl6的内容。
+
+![img](https://perl6advent.files.wordpress.com/2018/12/fish-tmp_112.png)
+
+## 改变
+
+现在我们的模拟器完成了它应该做的事情，让我们通过一些调整获得一些乐趣。
+
+首先，让我们看看增加不同状态数量需要做些什么：
+
+```perl6
+constant number-of-states = 4;
+
+# the size of the lookup table should be based on the number of states
+my int8 @lookup-table = (^number-of-states).roll(number-of-states³);
+
+sub output-a-row {
+
+    for @field {
+        # add unicode character "Full block" for the fourth state
+        print ["\x2591", "\x2592", "\x2593", "\x2588"][$_] x 2
+    }
+
+    say "";
+}
+```
+
+并且计算也需要基于状态数进行计算：
+
+```perl6
+my $index = $left * number-of-states * number-of-states
+            + $middle * number-of-states
+            + $right;
+```
+
+那已经是它了！ 到目前为止，甚至都不是很难。
+
+## 改变邻居
+
+现在这个更有趣了。 更改邻域将需要我们的计算循环来为索引计算获取更多变量，并且查找表也将再次更改其大小。
+
+让我们回到3个状态而不是4个状态，用一个只有一个单元格的单元替换邻域：我们将采用单元格的前任及其后继者，但忽略单元格本身。 然后我们添加了前任的前任和后继者的继任者：
+
+```perl6
+# three states, but four neighbors
+constant number-of-states = 3;
+constant number-of-neighbors = 4;
+
+# ...
+
+# exponentiate number-of-states with number-of-neighbors, like
+# you would to get a number-of-neighbors number in base number-of-states.
+my int8 @lookup-table = (^number-of-states).roll(number-of-states ** number-of-neighbors);
+
+sub simulate-step {
+   my int8 @output;
+
+   for ^field-width -> $x {
+       my $leftleft   = $x <= 1 ?? 0 !! @field[$x - 2];
+       my $left       = $x == 0 ?? 0 !! @field[$x - 1];
+
+       my $right      = $x == field-width - 1 ?? 0 !! @field[$x + 1];
+       my $rightright = $x >= field-width - 2 ?? 0 !! @field[$x + 2];
+
+       # many multiplications later ...
+       my $index = $leftleft * number-of-states * number-of-states * number-of-states
+                   + $left   * number-of-states * number-of-states
+                   + $right  * number-of-states
+                   + $rightright;
+
+       @output.push(@lookup-table[$index]);
+   }
+
+   @field = @output;
+}
+```
+
+![img](https://perl6advent.files.wordpress.com/2018/12/fish-tmp_113.png)
+
+这是试用它的 [6pad](https://perl6.github.io/6pad/#98c06c9c9aafaf36c9c4fbf320d9c9cc)
+
+可悲的是，它似乎只是让输出变得更加混乱。
+
+## 优化机会？
+
+目前，代码是高性能和可读性之间的折衷。 它也可能看起来像这样：
+
+```perl6
+for (0, |@field, 0).rotor(3 => -2) -> ($left, $middle, $right) {
+    my $index = :3[$right, $middle, $left];
+}
+```
+
+虽然我的直觉告诉我，这会明显变慢。
+
+但是我们可以使代码更快一点，甚至不会牺牲太多的可读性！
+
+有一件事我们的计算循环太多了：数组访问！ 连续三次访问每个单元格：一旦它变为 `$right`，再次变为 `$middle`，另一次变为 `$left`。
+
+那么我们怎样才能做得更好呢？ 我想到的第一件事是让变量 `$left`，`$middle` 和 `$right` 在迭代之间保持不变并通过以下方式移动单元格值：
+
+```perl6
+my $left   = 0;
+my $middle = @field[0];
+my $right  = @field[1];
+
+for ^field-width -> $x {
+    my $index = $left * number-of-states * number-of-states
+            + $middle * number-of-states
+            + $right;
+
+    @output.push: @lookup-table[$index];
+    $left = $middle;
+    $middle = $right;
+    $right = $x + 1 >= field-width ?? 0 !! @field[$x + 1];
+}
+```
+
+很酷，我们甚至已经摆脱了 `$x` vs field-width的检查！ 但是还有另一件事情一遍又一遍地发生，我们可以做一点点简单。 我们可以让 `$left`，`$middle` 和 `$right` 变量已经保存了添加所需的确切值：
+
+```perl6
+my $left   = 0;
+my $middle = @field[0] * 3;
+my $right  = @field[1];
+
+for ^field-width -> $x {
+    my $index = $left + $middle + $right;
+
+    @output.push: @lookup-table[$index];
+    $left = $middle * 3;
+    $middle = $right * 3;
+    $right = $x + 1 >= field-width ?? 0 !! @field[$x + 1];
+}
+```
+
+我认为看起来很整洁！
+
+## 其他变化？
+
+我遇到的一种细胞自动机是每个细胞都有机会在每一步上进行计算的细胞自动机，否则只需保持其状态一步。 让我们看看它是如何实现的：
+
+```perl6
+constant probability = 0.75e0;
+
+my $left   = 0;
+my $middle = @field[0] * 3;
+my $right  = @field[1];
+
+for ^field-width -> $x {
+    if rand < probability {
+        my $index = $left + $middle + $right;
+
+        @output.push: @lookup-table[$index];
+    }
+    else {
+        @output.push: $middle;
+    }
+    $left = $middle * 3;
+    $middle = $right * 3;
+    $right = $x + 1 >= field-width ?? 0 !! @field[$x + 1];
+}
+```
+
+较低的概率很容易被发现，因为它们会使得到的图像看起来垂直拉伸。 较高的概率可以导致完全规则的模式保持大部分完整，但在某些时候可以在一两个点被分解。
+
+这是给你的截图！
+
+![img](https://perl6advent.files.wordpress.com/2018/12/fish-tmp_114.png)
+
+## 这有用吗？
+
+细胞自动机通常是非常通用的，甚至非常简单的自动机也可以处理通用计算，如“[规则110](http://mathworld.wolfram.com/Rule110.html)”。还有更复杂的自动机，如[Von Neumann的能够自我复制的机器](https://en.wikipedia.org/wiki/Von_Neumann_universal_constructor)和WireWorld，它已被用来构建[一台可以计算素数并在七段显示器上显示它们的小机器](https://www.quinapalus.com/wires11.html)。
+
+非常令人惊讶的是，有一台[图灵机](http://conwaylife.com/wiki/Turing_machine)带有一个由非常受欢迎的生命游戏构建的文字磁带，并且可能更令人惊讶的是，它可以计算并显示[生命游戏的生命游戏配置](http://conwaylife.com/wiki/OTCA_metapixel)。
+
+总而言之，我发现细胞自动机是一个引人入胜的话题。在这篇文章中几乎没有提到二维细胞自动机，但除了本节已经提到的那些之外，还有许多有趣的自动机。
+
+实施方面，您很可能不会使用CPU代码来模拟细胞自动机。至少，你不会使用遍历每个单独单元的循环 - 请参阅奇妙的[HashLife算法](http://conwaylife.com/wiki/Hashlife)，该算法将世界切换为经常出现的越来越大的块，并立即执行许多全世界的步骤。否则，您很可能会在GPU上模拟CA，当每个单元的代码运行相同时，它会提供极高的并行度。
+
+感谢您通过这个非常长的帖子陪伴我！
+
+我希望我甚至可以唤醒对细胞自动机的奇妙和广阔世界的空洞兴趣！
+
+每个人都有一个可爱的十二月！

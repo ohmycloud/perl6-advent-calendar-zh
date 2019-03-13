@@ -1,0 +1,222 @@
+# 第十九天 - 交互式桌面应用
+
+我是地下城与龙等角色扮演游戏的忠实粉丝。这些游戏中的大多数都有屏幕来帮助你隐藏你在运行游戏时所做的事情，并为你提供游戏中使用的一些图表，以减少书中的内容。
+
+我的游戏收藏很广泛而且我宁愿使用我的笔记本电脑不仅隐藏在后面并跟踪信息，而且我还可以自动化骰子和图表使用。虽然我可以用文本编辑器和命令行魔法拼凑一些东西，但我宁愿拥有一些时髦的桌面应用程序，我可以向人们展示。
+
+输入[GTK::Simple](https://github.com/perl6/gtk-simple)是Linux Gnome桌面使用的gtk3 UI库的包装器，但也可以在Windows和Mac上使用。该库通过Native Call 的强大功能为你提供了一个简单易用的界面，让你可以创建简单的桌面应用程序。
+
+## 骰子滚动
+
+由于历史原因，角色扮演游戏大多数倾向于选择使用基于柏拉图固体的骰子。骰子的标准组合是4,6,8,10,12,20，并且通过组合2个10面骰子100的骰子。骰子可以多次滚动，用于写入的标准符号是“ x**d**y ”，其中 “*x*“ 是掷骰子的数量，”*y*“ 是掷骰子的大小。单个骰子在开始时跳过1，例如“roll a d6”意味着掷出六面骰子。
+
+有趣的是，在 Perl 6 中制作 “**d**” 运算符非常简单：
+
+```perl6
+sub infix: ( UInt $count, UInt $size ) { (1..$size).roll($count) }
+sub prefix: ( UInt $size ) { 1 d $size }
+```
+
+请注意，你需要将数字与空格分开，并且 “**d**” 运算符或编译器会混淆。
+
+我想要的是一个骰子滚轮应用程序，它提供了选择滚动标准骰子组的选项。现在我不会看到一些游戏使用的不同骰子，或者修改滚动，很多游戏都使用这些骰子。我想看看每个掷骰子，因为这可能很重要，具体取决于系统。如果可能的话，我也想要总数。
+
+## 简单的 GTK::Simple
+
+GTK::Simple 的基本用法很简单。创建一个应用程序，添加内容，放入一些事件处理程序，然后离开。
+
+首先，我们创建我们的应用程序，如下所示：
+
+```perl
+#!/usr/bin/env perl6
+
+# Get the GTK::Simple libraries
+use GTK::Simple;
+use GTK::Simple::App;
+
+# Create the main app
+my $app = GTK::Simple::App.new( title => "Dice Roller" );
+
+# Start the app running
+$app.run;
+```
+
+但…。这不是很有趣：
+
+![空](https://perl6advent.files.wordpress.com/2018/12/empty.png?w=788)
+
+## 网格布局
+
+要在应用程序中布局小部件，我们有各种选项，但建议使用的是网格。网格布局从左上角的0,0开始并根据需要延伸的小部件。
+
+正是在这一点上，我尝试构建一个应用程序，我打了一个墙。网格选项很好，我在下面的最后一个例子中使用它但是当我尝试的时候它没有按照我的预期工作。我仍然可以得到一个简单的网格，所以显示它的工作，但似乎需要更多的学习。无论如何这里是一个基本网格：
+
+```perl6
+#!/usr/bin/env perl6
+# Get the GTK::Simple libraries
+use GTK::Simple;
+use GTK::Simple::App;
+
+# Create the main app
+my $app = GTK::Simple::App.new( title => "Grid" );
+
+$app.set-content(
+    GTK::Simple::Grid.new(
+        # Grid key is [x,y,height,width]
+        [0,0,1,1] => GTK::Simple::Button.new( label => "a" ),
+        # A Button is a simple push button with a label
+        [0,1,1,1] => GTK::Simple::Button.new( label => "b" ),
+        [0,2,1,1] => GTK::Simple::Button.new( label => "c" ),
+        [1,0,1,3] => GTK::Simple::Button.new( label => "d" ),
+    )
+);
+
+$app.border-width = 10;
+# Start the app
+$app.run;
+```
+
+这个产生：
+
+![格](https://perl6advent.files.wordpress.com/2018/12/grid-1.png?w=788)
+
+## 交互
+
+这很整洁，但按钮还没有做任何事情。为此，我们需要事件处理程序。GUI应用程序需要事件驱动才能对用户操作做出反应，幸运的是 Perl 6 具有处理 Supplies 形式的事件的功能。每个按钮都有一个名为 clicked 的 supply，它可以附加一个 tap 处理程序。
+
+事件处理程序可以执行各种操作，包括操作其他UI对象。例如 ：
+
+```perl6
+#!/usr/bin/env perl6
+
+# Get the GTK::Simple libraries
+use GTK::Simple;
+use GTK::Simple::App;
+
+# Create the main app
+my $app = GTK::Simple::App.new( title => "Grid" );
+
+$app.set-content(
+    GTK::Simple::Grid.new(
+        # As we want to refer to our buttons later we assign them
+        # to variables
+        [0,0,1,1] => my $b1 = GTK::Simple::Button.new( label => "Push Me" ),
+        [1,1,1,1] => my $b2 = GTK::Simple::Button.new( label => "---" ),
+        [2,2,1,1] => my $b3 = GTK::Simple::Button.new( label => "---" ),
+        [3,3,1,1] => my $b4 = GTK::Simple::Button.new( label => "---" ),
+    )
+);
+
+# The sensitive flag controls whether you can click on the button
+$b2.sensitive = False;
+$b3.sensitive = False;
+$b4.sensitive = False;
+
+# In the 
+$b1.clicked.tap( { 
+    # $_ is the clicked button. Turn it off
+    .sensitive = False; 
+    # Change the label on the next button
+    $b2.label = "Now Me!"; 
+    # Make it clickable
+    $b2.sensitive = True 
+} );
+
+# Leaving on one line to cut down on space
+$b2.clicked.tap( { .sensitive = False; $b3.label = "Me Next"; $b3.sensitive = True } );
+$b3.clicked.tap( { .sensitive = False; $b4.label = "Me! Me!"; $b4.sensitive = True } );
+# App.exit closes the app.
+$b4.clicked.tap( { $app.exit } );
+
+$app.border-width = 10;
+# Start the app
+$app.run;
+```
+
+这使得：
+
+![纽扣](https://perl6advent.files.wordpress.com/2018/12/buttons.png?w=788)
+
+## 把它们放在一起
+
+有了这个和另一个小部件，Label 给了我们一些文本，我们可以把骰子滚动应用程序放在一起：
+
+```perl6
+#!/usr/bin/env perl6
+
+# Get the GTK::Simple libraries
+use GTK::Simple;
+use GTK::Simple::App;
+
+# Define our `d` operator
+sub infix: ( UInt $count, UInt $size ) { (1..$size).roll($count) }
+
+# Create the main app
+my $app = GTK::Simple::App.new( title => "Dice Roller" );
+
+# Output Box : Define here so the buttons can access it.
+my $output = GTK::Simple::Label.new( text => 'Roll : ');
+
+# Ouput box updater.
+sub roll( $label, $count, $size ) {
+    my @roll = $count d $size;
+    $label.text = "Roll : {@roll.join(" + ")} = {@roll.sum}"; 
+}
+
+# Create a grid and put the output box at the bottom filling the width
+my @grid = ( [0,6,7,1] => $output );
+
+# Track our depth in tthe grid
+my $y = 0;
+
+# Loop through counts
+for (1..6) -> $count {
+
+    # Track our postion along the grid
+    my $x = 0;
+
+    # Loop through standard dice sizes
+    for (4,6,8,10,12,20,100) -> $size {
+
+	# Standard labelling 
+	my $label = $count > 1 ?? "{$count}d{$size}" !! "d{$size}";
+
+	# Create our button
+	my $button = GTK::Simple::Button.new(label => $label);
+
+	# Buttons get a supply which emit when they are clicked
+	# Assign our roll function with the current count and size to it
+	# Note we do it in a block so it's not called right now but when
+	# the button is clicked
+	$button.clicked.tap(
+	    { roll( $output, $count, $size ) }
+	);
+
+	# Put the button in the valid place in the grid taking up one space
+	@grid.push( [$x,$y,1,1] => $button );
+
+	$x++;
+    }
+    $y++
+}
+
+# Create a grid object and assign it to the app.
+$app.set-content(
+    GTK::Simple::Grid.new( |@grid )
+);
+
+$app.border-width = 10;
+
+# Start the app running
+$app.run;
+```
+
+看起来像（这里滚动3d6）：
+
+![骰子辊](https://perl6advent.files.wordpress.com/2018/12/dice-roller.png?w=788)
+
+## 最后的想法
+
+考虑到我今天早上没有触及 GTK::Simple，我对我的最终结果非常满意。我认为我可以构建许多其他游戏工具。此外，我可能会参与模块本身的工作，尝试将更多的GTK功能添加到其中，并添加一些文档。
+
+尽管如此，使用 GTK::Simple 还是很容易使桌面应用程序在Perl6中遇到特殊的问题，而且代码并不多。
