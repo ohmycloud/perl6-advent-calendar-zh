@@ -26,7 +26,8 @@
 [2017-12-22-第二十二天-Perl-6.d的特性](https://github.com/ohmycloud/perl6-advent-calendar-zh/blob/master/2017/2017-12-22-第二十二天-Perl-6.d的特性.md)  
 [2017-12-23-第二十三天-Perl-6高尔夫](https://github.com/ohmycloud/perl6-advent-calendar-zh/blob/master/2017/2017-12-23-第二十三天-Perl-6高尔夫.md)  
 [2017-12-24-第二十四天-解魔方](https://github.com/ohmycloud/perl6-advent-calendar-zh/blob/master/2017/2017-12-24-第二十四天-解魔方.md)  
-  
+[2017-12-25-第二十五天-并发HTTP服务器实现](https://github.com/ohmycloud/perl6-advent-calendar-zh/blob/master/2017/2017-12-25-第二十五天-并发HTTP服务器实现.md)  
+
 ## 2018  
 
 [2018-12-01-porting-vigilance](https://github.com/ohmycloud/perl6-advent-calendar-zh/blob/master/2018/2018-12-01-porting-vigilance.md)  
