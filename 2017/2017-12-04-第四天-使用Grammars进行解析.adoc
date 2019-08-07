@@ -1,0 +1,688 @@
+== 第四天-使用 Grammars 进行解析
+
+下面是从 link:https://www.apress.com/us/book/9781484232279[Parsing with Perl 6 Regexes and Grammars: A Recursive Descent into Parsing] 这本书里面提取出来的一章, 作者是 Moritz Lenz, 由 Apress Media 出版社出版。版权经过允许。
+
+这本书马上就要出版了。至少该书的电子版这个月应该可以购买, 纸质版的可以在 link:https://smile.amazon.com/dp/1484232275/[亚马逊] 预定了。原本最迟会在 2018 年元月发出, 但是幸运的是, 圣诞节你就可以看到了。
+
+下面你会看到第九章, 使用 Grammars 进行解析。前面的章节详细探讨了创建正则表达式块儿、正则表达式怎么和 Perl 6 代码进行交互、匹配对象、正则力学、常用正则技术，还有重用和组合正则。你可以通过阅读link:https://docs.perl6.org/language/regexes[正则表达式官方文档]来获取更多关于正则的背景。
+
+后面的章节涵盖了 action 类和对象, 怎么报告高质量的解析错误, Unicode 支持, 最后还有三个案例研究。
+
+现在, 尽情享受吧！
+
+Grammar 是众人皆知的用于解析的瑞士军刀。
+
+在本章中，我们将更详细地探讨它们。 最重要的是，我们将讨论如何利用他们的威力。
+
+=== 理解 Grammars
+
+Grammars 实现了自顶向下的解析方法。 入口点，通常是 `TOP` regex 正则表达式，它知道粗粒度的结构，并调用下降到繁复细节的更深一步的正则表达式。 也会涉及到递归。 例如，如果解析算术表达式，则操作符可以是一对括号内的任意表达式。
+
+这是一个自顶向下的结构，或者更确切地说是一个link:https://en.wikipedia.org/wiki/Recursive_descent_parser[递归下降分析方法]。 如果不涉及回溯，我们称之为*预测分析法*，因为在字符串中的每个位置，我们确切地知道我们在寻找什么 - 我们可以预测下一个 token 将会是什么（即使我们只能预测它可能是一组可选分支的其中之一）。
+
+结果匹配树在结构上完全对应于 grammar 中正则表达式的调用结构。 让我们考虑解析一个只包含运算符 `*`，`+`和用于分组的括号的算术表达式：
+
+```perl6
+grammar MathExpression {
+    token TOP    { <sum> }
+    rule sum     { <product>+ %  '+' }
+    rule product { <term>+ % '*' }
+    rule term    { <number> | <group> }
+    rule group   { '(' <sum> ')' }
+    token number { \d+ }
+}
+
+say MathExpression.parse('2 + 4 * 5 * (1 + 3)');
+```
+
+从 Grammar 本身，你已经可以看到递归的可能性：`sum` 调用 `product`，`product` 调用 `term`，`term` 调用 `group`，`group` 再次调用 `sum`。 这允许解析任意深度的嵌套表达式。
+
+解析上面的例子产生下面的匹配对象：
+
+```
+⌜2 + 4 * 5 * (1 + 3)⌟
+ sum => ⌜2 + 4 * 5 * (1 + 3)⌟
+  product => ⌜2 ⌟
+   term => ⌜2 ⌟
+    number => ⌜2⌟
+  product => ⌜4 * 5 * (1 + 3)⌟
+   term => ⌜4 ⌟
+    number => ⌜4⌟
+   term => ⌜5 ⌟
+    number => ⌜5⌟
+   term => ⌜(1 + 3)⌟
+    group => ⌜(1 + 3)⌟
+     sum => ⌜1 + 3⌟
+      product => ⌜1 ⌟
+       term => ⌜1 ⌟
+        number => ⌜1⌟
+      product => ⌜3⌟
+       term => ⌜3⌟
+        number => ⌜3⌟
+```
+
+如果你想知道某个特定的数字是如何解析的，你可以通过查找当前行上缩进较少的行来追踪路径。 例如，数字 `1` 由 token `number`解析，调用自 `term`，再调用自 `product`，以此类推。
+
+我们可以通过从 token `number` 引发异常来验证这一点：
+
+```perl6
+    token number {
+        (\d+)
+        { die "how did I get here?" if $0 eq '1' }
+    }
+```
+
+这确实显示了回溯中的调用链，其中最直接的上下文是：
+
+```
+how did I get here?
+  in regex number at bt.p6 line 9
+  in regex term at bt.p6 line 5
+  in regex product at bt.p6 line 4
+  in regex sum at bt.p6 line 3
+  in regex group at bt.p6 line 6
+  in regex term at bt.p6 line 5
+  in regex product at bt.p6 line 4
+  in regex sum at bt.p6 line 3
+  in regex TOP at bt.p6 line 2
+  in block <unit> at bt.p6 line 13
+```
+
+这个语法只使用 tokens 和 rules，所以不涉及回溯，而 grammar 是一个预测分析法。 这是相当典型的。 没有回溯或在几个地方有回溯时, 许多 grammars 都工作正常。
+
+=== 递归下降分析法和优先级
+
+`MathExpression` grammar 有两个结构相同的 rules：
+
+```perl6
+rule sum { <product>+ %  '+' }
+rule product { <term>+ % '*' }
+```
+
+但是, 我们也可以写成:
+
+```perl6
+rule  expression { <operator>+ % <term> }
+token operator   {  '*' | '+' }
+```
+
+或者甚至使用前一章讨论的 `proto token` 构造来解析不同的操作符。我选择第一种更重复的方法的原因是它使匹配结构对应于运算符 `*` 和 `+` 的优先级。
+
+当计算数学表达式 `1 + 2 * 5` 时，数学家和大多数编程语言首先计算 `2 * 5`，因为 `*` 运算符的优先级高于 `+`。然后将结果代入表达式，成为 `1 + 10`，最后得到 `11`。
+
+当用 grammar 的第一个版本解析这样的表达式的时候，解析树的结构表示这个分组：它具有 - 作为最高级 - 单个 sum，操作数是 `1` 和 `2 * 5`。
+
+这是有代价的：对于每个优先级我们需要一个单独的 rule 和名字，并且所产生的结果匹配对象的嵌套层级, 每个优先级至少有一级。而且，稍后增加更多的优先级并不是微不足道的，而且很难通用。如果您不愿意接受这些成本，则可以使用具有单个 token 的平级模型来解析所有运算符。如果您需要能反映优先级的结构，则可以编写代码将列表转换为树。这通常被称为link:https://en.wikipedia.org/wiki/Operator-precedence_parser[运算符优先级解析器]。
+
+=== 左递归和其他陷阱
+
+为了避免无限递归，你必须注意，每个可能的递归循环至少将游标位置推进了一个字符。在 `MathExpression` grammar 中，唯一可能的递归循环是 `sum`→`product`→`term`→`group`→`sum`，并且 `group` 只有在消耗了一个初始开口圆括号 `(` 时才匹配。
+
+如果递归不消耗字符，则它被称为*左递归*，并且需要特殊的语言支持, 这个 Perl 6 并不支持。一个例子是：
+
+```perl6
+token a { <a>? 'a' }
+```
+
+它本该与正则表达式 `a+` 匹配相同的输入，但是却无限循环而不前进。
+
+避免左递归的一个常用技巧是有一个可以按照从通用（这里是 `sum`）到特定（`number`）顺序排序正则表达式的结构。当正则表达式偏离该顺序时（例如 `group `调用 `sum`），你只需要关心并检查消耗的字符。
+
+无限循环的另一个潜在来源是在量词化能匹配空字符串的正则表达式时。在解析允许某些内容为空的语言时可能会发生这种情况。例如，在 UNIX shell 中，你可以在给变量赋值的时候把右侧置空：
+
+```perl6
+VAR1=value
+VAR2=
+```
+
+在为 UNIX shell 命令编写 grammar 时，编写一个可能匹配空字符串的 `token string { \w* }` 可能会很冒险。 在允许多于一个字符串字面值的情况下，`<string>+` 就会挂起，因为实际的正则表达式 `[\w*]+` 试图无限次地匹配一个零宽度的字符串。
+
+一旦你意识到了这个问题，解决方案就变得非常简单：将 token 更改为不允许空字符串（`token string { \w+ }`），并显式地处理允许空字符串的情况：
+
+```perl6
+    token assignment {
+        <variable> '=' <string>?
+    }
+```
+
+=== 始于简单
+
+即使 grammar 是自上而下工作的，但是开发的时候最好开自下而上。 一开始，grammar 的总体结构往往是不明显的，但是你通常知道*末端* token：那些能直接匹配文本而不需要调用其他 subrules 的 token。
+
+在前面的解析数学表达式的例子中，你可能一开始不知道如何安排解析 sums 和 products 的 rules，但你很可能知道必须在某个时候解析数字，所以一开始你可以这样写：
+
+```perl6
+grammar MathExpression {
+    token number { \d+ }
+}
+```
+
+这并不是很多，但也不是很复杂，这是程序员有时在遇到新问题领域时克服挑战的一种很好的方式。 当然，一旦你有了 token，就可以开始写一些测试了：
+
+```perl6
+grammar MathExpression {
+    token number { \d+ }
+}
+
+multi sub MAIN(Bool :$test!) {
+    use Test;
+    plan 2;
+    ok MathExpression.parse('1234', :rule<number>),
+        '<number> parses 1234';
+    nok MathExpression.parse('1+4', :rule<number>),
+        '<number> does not parse 1+4';
+}
+```
+
+现在，您可以以自己的方式创建更复杂的表达式：
+
+```perl6
+grammar MathExpression {
+    token number { \d+ }
+    rule product { <number>+ % '*' }
+}
+
+multi sub MAIN(Bool :$test!) {
+    use Test;
+    plan 5;
+    ok MathExpression.parse('1234', :rule<number>),
+        '<number> parses 1234';
+    nok MathExpression.parse('1+4', :rule<number>),
+        '<number> does not parse 1+4';
+
+    ok MathExpression.parse('1234', :rule<product>),
+        '<product> can parse a simple number';
+    ok MathExpression.parse('1*3*4', :rule<product>),
+        '<product> can parse three terms';
+    ok MathExpression.parse('1 * 3', :rule<product>),
+        '<product> and whitespace';
+}
+```
+
+在测试的早期包含空白是值得的。 上面的例子看起来是无害的，但最后那个测试实际上失败了。 没有 rule 匹配 `1` 和 `*` 之间的空格。 在 `<number>` 和 `+` 量词之间的正则表达式中添加一个空格使测试再次通过，因为空格插入了一个隐式的 `<.ws>` 调用。
+
+如果你从最简单的开始，尽快抓住这些细节，就很容易理解。 如果不是从上到下写下整个 grammar，你就会花很多时间去调试为什么一些看起来很简单的东西会导致解析失败, 比如额外的空格。
+
+=== 组装完整的 Grammars
+
+一旦你为词法分析编写了基本的 tokens，你可以进行合并。 通常，tokens 不会在匹配的边界处解析空白，因此组合它们的 rules 会这样做。
+
+在上一节的 `MathExpression` 示例中，`rule product` 直接地调用了 `number`, 即使我们现在知道最终版本使用了一个中间步骤，也就是 rule `term`，它也可以解析用圆括号围起来的表达式。 引入这个额外的步骤不会使我们为 `product` 编写的测试失效，因为它在早期版本中匹配的字符串仍然匹配。 从处理语言子集的 grammar 开始，引入更多层是自然发生的，稍后将扩展。
+
+=== 调试 Grammars
+
+对于正则表达式或 Grammar，有两种失败模式：它们可以匹配，当它不应该匹配（误报）时，或者它应该匹配（错误否定）时可能匹配失败。通常，误报更容易理解，因为您可以检查生成的匹配对象，并查看哪些正则表达式匹配了字符串的哪一部分。
+
+有一个方便的工具来调试误报：`Grammar::Tracer` 模块。如果将模块加载到包含 grammar 的文件中，则运行该 grammar 会生成诊断信息，以帮助您找出匹配出错的位置。
+
+请注意，这只是开发人员的诊断工具; 如果你想给终端用户更好的错误信息，请阅读第 11 章的改进建议。
+
+您需要安装 Perl 6 的 `Grammar::Debugger` 模块，其中还包含 `Grammar::Tracer`。如果您使用 `moritzlenz/perl6-regex-alpine` 的 docker 镜像，这已经为您完成了。如果您通过其他方法安装了Perl 6，则需要在命令行上运行：
+
+```perl6
+zef install Grammar::Debugger
+```
+
+如果尚未安装 `zef`，请按照 link:https://github.com/ugexe/zef#installation[zef GitHub页面] 上的安装说明进行操作。
+
+让我们来看一下 TadeuszSośnierz 写的 Perl 6 模块 link:https://github.com/tadzik/perl6-Config-INI[Config::INI]。 它包含以下 link:https://github.com/tadzik/perl6-Config-INI/blob/master/lib/Config/INI.pm[grammar]（这儿稍微重新格式化了）：
+
+```perl6
+grammar INI {
+    token TOP {
+        ^ <.eol>* <toplevel>?  <sections>* <.eol>* $
+            }
+    token toplevel { <keyval>* }
+    token sections { <header> <keyval>* }
+    token header   { ^^ \h* '[' ~ ']' $<text>=<-[ \] \n ]>+
+                     \h* <.eol>+ }
+    token keyval   { ^^ \h* <key> \h* '=' \h* <value>? \h*
+                     <.eol>+ }
+    regex key      { <![#\[]> <-[;=]>+ }
+    regex value    { [ <![#;]> \N ]+ }
+    token eol      { [ <[#;]> \N* ]? \n }
+}
+```
+
+假设我们想知道为什么它不解析下面的一段输入文本：
+
+```perl6
+a = b
+[foo]
+c: d
+```
+
+所以, 在该 grammar 之前, 我们插入下面这一行：
+
+```perl6
+use Grammar::Tracer;
+```
+
+之后，添加一小段调用该 grammar 的 `.parse` 方法的代码：
+
+```perl6
+INI.parse(q:to/EOF/);
+a = b
+[foo]
+c: d
+EOF
+```
+
+这产生了一个可观的，但相当丰富的输出。
+
+每个条目由一个正则表达式的名称组成，比如 `TOP` 或者 `eol`（"end of line" 的缩写），后面跟着它调用的正则表达式的缩进后的输出。 每个正则表达式后面都有一个包含星号（`*`）和 `MATCH` 后跟正则表达式匹配到的字符串片段这样的行; 如果正则表达式失败，则 `*` 号后面跟的是 `FAIL`。
+
+让我们一块一块地查看输出，即使它成块地出现：
+
+```
+TOP
+|  eol
+|  * FAIL
+|  toplevel
+|  |  keyval
+|  |  |  key
+|  |  |  * MATCH "a "
+|  |  |  value
+|  |  |  * MATCH "b"
+|  |  |  eol
+|  |  |  * MATCH "\n"
+|  |  |  eol
+|  |  |  * FAIL
+|  |  * MATCH "a = b\n"
+|  |  keyval
+|  |  |  key
+|  |  |  * FAIL
+|  |  * FAIL
+|  * MATCH "a = b\n"
+```
+
+这告诉我们，`TOP` 调用了 `eol`，它没有匹配。 由于 `eol` 的调用是用 `*` 量化的，所以这不会导致 `TOP` 的匹配失败。 `TOP` 然后调用了 `key`, 匹配到文本 "a", 调用 `value`, 匹配到文本 "b"。 然后 `eol` 正则表达式继续匹配换行符，在第二次尝试时失败（因为在一行中没有两个换行符）。 这会导致初始的 `keyval` token 匹配成功。 第二次调用 `keyval` 匹配很快（在调用 `key` 中）。 然后，`toplevel` token 的匹配成功进行，消耗了字符串 "a = b \ n"。
+
+到目前为止，这一切看起来都和预期的一样。 现在我们来看看第二部分的输出：
+
+```
+|  sections
+|  |  header
+|  |  |  eol
+|  |  |  * MATCH "\n"
+|  |  |  eol
+|  |  |  * FAIL
+|  |  * MATCH "[foo]\n"
+|  |  keyval
+|  |  |  key
+|  |  |  * MATCH "c: d\n"
+|  |  * FAIL
+|  * MATCH "[foo]\n"
+```
+
+`TOP` 接下来调用 `sections`，其中 token `header` 成功匹配了字符串 `"[foo] \ n"`。 然后，`keyval` 调用 `key`，它匹配了 `"c: d\n"` 整行。 等等，这是不对的，是吗？ 我们可能期望 `key` 只匹配 `c`。 我当然不希望它匹配最后的换行符。 输入中缺少等号会导致 regex 引擎永远不会调用 regex `value`。 但是由于 `keyval` 再次用星号 `*` 量词进行量化，因此调用正则表达式 `sections` 的匹配成功地匹配了 header `"[foo]\n"`。
+
+`Grammar::Tracer` 输出的最后一部分如下所示：
+
+```
+|  sections
+|  |  header
+|  |  * FAIL
+|  * FAIL
+|  eol
+|  * FAIL
+* FAIL
+```
+
+从这里开始都是 `FAIL`。第二次调用 `sections` 再次尝试解析 header，但其下一个输入仍然是 `"c: d\n"`，所以失败了。正如 token `TOP` 中字符串末尾的锚点 `$` 一样，在 `parse` 方法中总体匹配失败。
+
+所以我们已经知道正则表达式 `key` 匹配整行 `c: d\n`，但是因为没有等号（`=`）跟在后面，所以 token `keyval` 解析不了这一行。由于没有其他正则表达式（特别是没有 `header`）匹配它，这是匹配失败的地方。
+
+从这个例子中你可以看到，`Grammar::Tracer` 使我们能够精确定位解析失败发生的位置，尽管我们必须仔细查看它的输出以找到它。在终端中运行时，会自动获取彩色输出，其中 `FAIL` 为红色，`MATCH` 为绿色背景，token 名称以粗体白色（而不是通常的灰色）输出。这样可以更容易地从底部扫描（失败的匹配通常会留下一条红色的 `FAIL`），直到尾部成功的匹配，然后在匹配和失败之间的边界附近查看。
+
+由于调试带来了巨大的精神负担，而且 `Grammar::Tracer` 的输出趋向于快速增长，所以通常建议将失败的输入减少到最小的样本。在上述情况下，我们可以删除输入字符串的第一行，并保存十行 `Grammar::Tracer` 输出来查看。
+
+=== 解析空白和注释
+
+如前所述，解析无关紧要的空格的惯用方法是调用 `<.ws>`，通常隐式地使用 rule 中的空格。 默认的 `ws` 实现 `<!ww>\s*` 对许多语言都适用，但是它有其局限性。
+
+在数量惊人的文件格式和计算机语言中，也有 `<.ws>` 占用的空白是有意义的。 这些包括 INI 文件（换行符通常表示一个新的键/值对），Python 和 YAML（缩进用于分组），CSV（换行符表示新记录）以及 Makefile（缩进要求是制表符）。
+
+在这些情况下，最好的做法在你自己的 grammar 中重写 `ws` 来匹配只有不重要的空格。 让我们来看看第二个简约的 INI 解析器，它是从上一节中描述的独立开发的：
+
+```perl6
+grammar INIFile {
+    token TOP { <section>* }
+    token section {
+        <header>
+        <keyvalue>*
+    }
+    rule header {
+        '['  <-[ \] \n ]>+ ']' <.eol>
+    }
+    rule keyvalue {
+        ^^
+        $<key>=[\w+]
+        <[:=]>
+        $<value>=[<-[\n;#]>*]
+        <.eol>
+    }
+    token ws { <!ww> \h* }
+    token eol {
+        \n [\h*\n]*
+    }
+}
+```
+
+它解析简单的 INI 配置文件就像这样：
+
+```
+[db]
+driver: mysql
+host: db01.example.com
+port: 122
+username: us123
+password: s3kr1t
+```
+
+注意这个 grammar 如何使用两条路径来解析空格：自定义的 `ws` token 只匹配水平空白（空格和制表符），单独的 `eol` token 匹配(significant)换行符。 `eol` token 还吞噬了只包含空格的更多行。
+
+如果语言支持注释，并且不希望它们出现在解析树中，则可以使用 `ws` token 或 `eol`（或其等价物）来解析它们。 哪一个取决于哪里允许注释。 在 INI 文件中，它们只允许出现在键值对之后，或者它们自己单独占一行，所以 `eol` 将是合适的地方。 相比之下，SQL 允许在每个允许空格的地方进行注释，所以在 `ws` 中解析它们是很自然的：
+
+```perl6
+# comment parsing for SQL:
+token ws { <!ww> \s* [ '--' \N* \n ]* }
+
+# comment parsing for INI files:
+token eol { [ [ <[#;]> \N* ]? \n ]+ }
+```
+
+=== 保存状态
+
+一些更有趣的数据格式和语言要求解析器存储事物（至少暂时）以便能够正确地解析它们。 一个恰当的例子是C编程语言，另一个例子是受其语法启发的（例如C ++和Java）。 这样的语言允许表单类型variable = initial_value的变量声明，如下所示：
+
+```perl6
+int x = 42;
+```
+
+这是有效的语法，但只有当第一个单词是一个类型名称。 相反，这将是无效的，因为x不是一个类型：
+
+```perl6
+int x = 42;
+x y = 23;
+```
+
+从这些例子中可以清楚地看到，解析器必须有它所知道的所有类型的记录。 由于用户也可以在他们的代码文件中声明类型，解析器必须能够更新这个记录。
+
+许多语言还要求在引用符号（变量，类型和函数）之前进行声明。 这也需要语法来跟踪已经声明的内容和没有的内容。 这个已经声明的记录（以及什么是一个类型，也可能不是其他元信息）被称为符号表。
+
+我们不考虑解析完整的C语言，而是考虑一种极简主义语言，它只允许分配数字列表和变量给变量：
+
+```perl6
+a = 1
+b = 2
+c = a, 5, b
+```
+
+如果我们不强加声明规则，写一个语法是很容易的：
+
+```perl6
+grammar VariableLists {
+    token TOP        { <statement>* }
+    rule  statement  { <identifier> '=' <termlist> \n }
+    rule  termlist   { <term> * % ',' }
+    token term       { <identifier> | <number> }
+    token number     { \d+ }
+    token identifier { <:alpha> \w* }
+    token ws         { <!ww> \h* }
+}
+```
+
+现在我们要求变量只能在赋值之后才能使用，所以下面的输入将是无效的，因为在第二行中没有声明b的地方：
+
+```perl6
+a = 1
+c = a, 5, b
+b = 2
+```
+
+为了维护一个符号表，我们需要三个新的元素：符号表的声明，一些代码，当赋值语句被解析时，将一个变量名添加到符号表中，最后检查一个变量是否已经被声明 我们在一个术语列表中遇到它：
+
+```perl6
+grammar VariableLists {
+    token TOP {
+        :my %*SYMBOLS;
+        <statement>*
+    }
+    token ws { <!ww> \h* }
+    rule statement {
+        <identifier>
+        { %*SYMBOLS{ $<identifier> } = True }
+        '=' <termlist>
+        \n
+    }
+    rule termlist { <term> * % ',' }
+    token term { <variable> | <number> }
+    token variable {
+        <identifier>
+        <?{ %*SYMBOLS{ $<identifier> } }>
+    }
+    token number { \d+ }
+    token identifier { <:alpha> \w* }
+}
+```
+
+在令牌TOP中，：my％* SYMBOLS声明一个变量。 正则表达式中的声明以冒号（:)开始，以分号（;）结尾。 在它们之间，它们看起来像Perl 6中的正常声明。％sigil表示该变量是一个散列 - 一个字符串键到值的映射。 *使它成为一个动态变量 - 一个变量，不仅限于当前范围，而且对于从当前范围调用的代码（或正则表达式，也是代码）也是可见的。 由于这是一个非常大的范围，所以在大写字母中选择一个变量是自定义的。
+
+第二部分，在符号表中添加一个符号，发生在规则声明中：
+
+```perl6
+    rule statement {
+        <identifier>
+        { %*SYMBOLS{ $<identifier> } = True }
+        '=' <termlist>
+        \n
+    }
+```
+
+大括号内是常规的（非正则表达式）Perl 6代码，所以我们可以使用它来操作哈希％* SYMBOLS。 表达式$ <identifier>访问变量name2的捕获。 因此，如果此规则解析变量a，则此语句将设置％* SYMBOLS {'a'} = True。
+
+代码块的位置是相关的。 把它放在调用termlist之前意味着当术语列表被解析时变量已经是已知的，所以它接受像a = 2，a这样的输入。 如果我们首先调用termlist，这种输入被拒绝。
+
+说到拒绝，这部分发生在令牌变量。 term现在调用新的标记变量（以前它直接称为标识符），并且变量验证该符号是在之前声明的：
+
+```perl6
+    token term { <variable> | <number> }
+    token variable {
+        <identifier>
+        <?{ %*SYMBOLS{ $<identifier> } }>
+    }
+```
+
+你可能还记得在前面的例子中，<？{...}>执行一段Perl 6代码，如果它返回一个假值，则解析失败。 如果$ <identifier>不在％SYMBOLS中，这正是发生的情况。 在这个时候，令牌的非回溯性是很重要的。 如果被解析的变量是abc，并且变量a在％* SYMBOLS中，则回溯将尝试<identifier>的较短匹配，直到它碰到a，然后成功3。
+
+由于在标记TOP中声明了％* SYMBOLS，所以当您尝试从语法外调用除TOP之外的其他规则时，必须复制此声明。 没有像我的％* SYMBOLS ;,一个像这样的调用声明
+
+```perl6
+VariableLists.parse('abc', rule => 'variable');
+```
+
+dies with:
+
+```perl6
+Dynamic variable %*SYMBOLS not found
+```
+
+=== 使用动态变量实现词法作用域
+
+许多编程语言都有一个词汇范围的概念。 范围是程序中符号可见的区域。 如果范围仅由文本的结构（而不是程序的运行时功能）决定，我们称之为范围词法。
+
+范围通常可以嵌套。 在一个作用域中声明的变量在这个作用域中是可见的，在所有的内部嵌套作用域中（除非内部作用域声明了一个名称相同的变量，在这种情况下，内部声明隐藏了外部作用域）。
+
+回到列表和作业的玩具语言，我们可以引入一对花括号来表示一个新的范围，所以这是有效的：
+
+```perl6
+a = 1
+b = 2
+{
+    c = a, 5, b
+}
+```
+
+但下一个例子是无效的，因为它只在内部范围内声明b，所以它在外部范围内是不可见的：
+
+```perl6
+a = 1
+{
+    b = 2
+}
+c = a, 5, b
+```
+
+为了在语法中实现这些规则，我们可以利用一个重要的观察：语法中的动态范围对应于它分析的文本中的词法范围。 如果我们有一个正则表达式块来解析范围的分隔符以及范围内的事物，那么它的动态范围就局限于它所调用的所有正则表达式（直接或间接），这也是它的范围 匹配输入文本。
+
+我们来看看如何实现动态范围：
+
+```perl6
+grammar VariableLists {
+    token TOP {
+        :my %*SYMBOLS;
+        <statement>*
+    }
+    token ws { <!ww> \h* }
+    token statement {
+        | <declaration>
+        |  <block>
+    }
+    rule declaration {
+        <identifier>
+        { %*SYMBOLS{ $<identifier> } = True; }
+        '=' <termlist>
+        \n
+    }
+    rule block {
+        :my %*SYMBOLS = CALLERS::<%*SYMBOLS>;
+        '{' \n*
+            <statement>*
+        '}' \n*
+    }
+    rule termlist { <term> * % ',' }
+    token term { <variable> | <number> }
+    token variable {
+        <identifier>
+        <?{ %*SYMBOLS{ $<identifier> } }>
+    }
+    token number { \d+ }
+    token identifier { <:alpha> \w* }
+}
+```
+
+这个语法的前一个版本有一些变化：规则语句已被重命名为声明，新的规则语句分析声明或块。
+
+所有有趣的位都发生在块规则中。 该行：my％* SYMBOLS = CALLERS :: <％* SYMBOLS>; 声明一个新的动态变量％* SYMBOLS并用该变量的前一个值初始化它。 CALLERS :: <％* SYMBOLS>通过调用者和调用者的调用者等查找变量％* SYMBOLS，从而查找对应于外部作用域的值。 初始化创建散列的副本，以便对一个副本的更改不会影响其他副本。
+
+让我们来看看当这个语法解析下面的输入时会发生什么：
+
+```perl6
+a = 1
+b = 2
+{
+    c = a, 5, b
+}
+```
+
+在前两行之后，％* SYMBOLS的值为{a => True，b => True}。 当规则块解析第三行的开放大括号时，它会创建％* SYMBOLS的副本。 第四行的c的声明将对c => True插入到％* SYMBOLS的副本中。 在规则块解析最后一行的结束大括号之后，它将成功退出，并且％* SYMBOLS的副本将超出范围。 这给我们留下了早期版本的％* SYMBOLS（只有键a和b），当TOP退出时，它们超出了范围。
+
+通过显式符号表进行范围确定
+
+使用动态变量来管理符号表通常工作得很好，但是有一些边缘情况下更明确的方法效果更好。 这样的边缘情况包括那些符号太多以至于复制变得非常昂贵的情况，或者必须检查多于最顶端的范围的情况，或者复制符号表是不切实际的。
+
+因此，可以为符号表编写一个类（在最简单的情况下，它使用一个数组作为范围的堆栈），在进入和离开范围时，在声明一个变量时，以及为了检查一个变量是否为 在一个范围内已知：
+
+```perl6
+class SymbolTable {
+    has @!scopes = {}, ;
+    method enter-scope() {
+        @!scopes.push({})
+    }
+    method leave-scope() {
+        @!scopes.pop();
+    }
+    method declare($variable) {
+        @!scopes[*-1]{$variable} = True
+    }
+    method check-declared($variable) {
+        for @!scopes.reverse -> %scope {
+            return True if %scope{$variable};
+        }
+        return False;
+    }
+}
+
+grammar VariableLists {
+    token TOP {
+        :my $*ST = SymbolTable.new();
+        <statement>*
+    }
+    token ws { <!ww> \h* }
+    token statement {
+        | <declaration>
+        |  <block>
+    }
+    rule declaration {
+        <identifier>
+        { $*ST.declare( $<identifier> ) }
+        '=' <termlist>
+        \n
+    }
+    rule block {
+        '{' \n*
+            { $*ST.enter-scope() }
+            <statement>*
+            { $*ST.leave-scope() }
+        '}' \n*
+    }
+    rule termlist { <term> * % ',' }
+    token term { <variable> | <number> }
+    token variable {
+        <identifier>
+        <?{ $*ST.check-declared($<identifier>) }>
+    }
+    token number { \d+ }
+    token identifier { <:alpha> \w* }
+}
+```
+
+SymbolTable类具有私有数组属性@！作用域，它使用包含单个空散列的列表进行初始化。输入一个作用域意味着在这个数组的顶部推一个空的散列，当离开这个作用域的时候，它会通过pop方法调用再次被删除。变量声明将其名称添加到最顶端的散列@ @ scopes [* - 1]。
+
+检查变量的存在不能只考虑最顶端的散列，因为变量被继承到内部作用域。在这里，我们以相反的顺序遍历所有的范围，从最内层到最外层的范围。遍历的顺序与简单的布尔检查无关，但是如果您需要查找与该变量相关的信息，则遵守此顺序以引用正确的顺序非常重要。
+
+令牌TOP创建类SymbolTable的新对象，声明调用声明方法，令牌变量调用方法检查声明。规则块在解析语句列表之前调用进入范围，之后保留范围。这个工作，但只有当语句列表可以被成功解析;如果不是，规则块在管理调用离开范围之前失败。
+
+对于这种情况，Perl 6有一个安全特性：如果在LEAVE语句前添加一个语句，那么在例程退出时，Perl 6可以在所有可能的情况下调用它（即使抛出异常）。由于LEAVE相位器只能在正则代码中使用，而不能在正则表达式中使用，所以我们需要将正则表达式包装在一个方法中：
+
+```perl6
+    method block {
+        $*ST.enter-scope();
+        LEAVE $*ST.leave-scope();
+        self.block_wrapped();
+    }
+    rule block_wrapped {
+        '{' \n*
+            <statement>*
+        '}' \n*
+    }
+```
+
+现在我们拥有与动态变量相同的鲁棒性，并且以更多的代码和更多的努力为代价，可以更灵活地向符号表添加额外的代码。
+
+=== 总结 
+
+Perl 6 的 Grammar 是编写递归下降解析器的一种声明方式。 如果没有回溯，他们就是可预测的; 在每一个时刻，我们都知道我们想要的 token 列表。
+
+Grammar 的递归性带来了左递归的风险，即递归路径不消耗任何字符的情况，从而导致无限循环。
+
+尽管 Grammar 是自上而下的，但是他们通常是从下到上写出来的：从词法分析开始，然后转向解析更大的结构。
+
+复杂语言成功和精确的解析需要额外的状态。 我们已经看到了如何在 grammar 中使用动态变量来保存状态，它们的作用域如何对应于输入的词法作用域，以及如何将符号表写入并集成到 grammars 中。
+
+1、就像一把瑞士军刀一样，但是功能更强大。
+2、在这一点上，`identifier` 不会解析其周围的空白是至关重要的。 因此，token 不关心空白的原则和调用这些 token 的 rules 解析空白。
+3、在这种情况下，这将是无害的，因为没有其他 rule 可以匹配变量的其余部分，导致解析错误。 但是在更复杂的情况下，这种无意的回溯会导致语法维护人员非常困惑的错误。
+
+link:https://perl6advent.wordpress.com/2017/12/04/day-08-parsing-with-grammars-book-extract/[Day 4 – Parsing with Grammars]

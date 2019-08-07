@@ -1,0 +1,489 @@
+== 第十八天 - 一棵 AVG 格式的圣诞树
+
+圣诞树是一种传统的象征，可以追溯到欧洲四百多年前，所以对于一篇关于创造圣诞树图像的出现文章来说，这可能更好。
+
+树的典型，简化的表示是几个尺寸逐渐减小的三角形，彼此叠加并且具有小的重叠，因此使用计算机程序很容易创建。
+
+在这里，我将使用可缩放矢量图形（SVG）绘制图像，如上所述，它似乎非常适合任务。
+
+=== 关于SVG并创建它
+
+SVG是一种XML文档格式，它将图像描述为点之间的一组矢量，它具有线条和形状的基元，并提供所描述对象的样式。
+
+也许最简单的SVG文档是这样的：
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" 
+     xmlns:svg="http://www.w3.org/2000/svg" 
+     xmlns:xlink="http://www.w3.org/1999/xlink" 
+     width="100" 
+     height="100">
+	<g>
+		<rect x="5" y="5" width="90" height="90" stroke="black" fill="green" />
+	</g>
+</svg>
+```
+
+
+
+这描述了侧面90的绿色填充正方形（单元基本上是抽象的并且相对于显示器的尺寸，因为图像的可缩放特性意味着它们可能不等同于例如像素。）
+
+现在我们可以在程序中使用一些变量插值打印出XML，但是对于比上面的例子更复杂的事情，这可能会非常繁琐且容易出错。幸运的是Perl 6有一个方便的link:https://github.com/moritz/svg[SVG]模块，它负责从描述它的数据结构中实际创建格式良好的XML文档。因此，我们的示例矩形可以使用以下内容创建：
+
+```perl6
+use SVG;
+
+say SVG.serialize(
+    svg => [
+        width => 100, height => 100,
+        :g[:rect[:x<5>, :y<5>, :width<90>, :height<90>, :stroke<black>, :file<green>]],
+    ],
+);
+```
+
+本质上，参数`serialize`是一组嵌套的link:https://docs.perl6.org/type/Pair[Pairs]：其中value是标量类型，键和值用于形成XML属性，其中值是List of Pairs，这将创建一个以键命名的XML元素，列表中的每个对都被解释为如上所述，从而允许以简单的声明方式构建复杂文档。
+
+所以我们可以通过构造适当的数据结构来生成我们的示例圣诞树，但是因为我们的图像中可能至少有四个对象（三个三角形和一个用于树干的矩形）及其相关属性，这可能会非常不合适如果我们想改变某些东西，很难改变。
+
+所以…
+
+=== 我们抽象吧！
+
+为了使我们的SVG生成更加灵活并为未来的代码重用开辟了机会，创建一组代表我们可能想要使用的SVG原语的类并抽象出将要生成的数据结构可能是有意义的。序列化为XML。
+
+所以让我们从可以生成原始矩形示例的东西开始：
+
+```perl
+use SVG;
+
+class SVG::Drawing {
+    role Element {
+        method serialize() {
+            ...
+        }
+    }
+
+    has Element @.elements;
+
+    has Int $.width;
+    has Int $.height;
+
+    class Group does Element {
+        has Element @.elements;
+        method serialize( --> Pair ) {
+            g => @!elements.map( -> $e { $e.serialize }).list;
+        }
+    }
+
+    class Rectangle does Element {
+        has Int $.x;
+        has Int $.y;
+        has Int $.width;
+        has Int $.height;
+        has Str $.stroke;
+        has Str $.fill;
+
+        method serialize( --> Pair) {
+            rect => [x =>  $!x, y => $!y, width => $!width, height => $!height, stroke => $!stroke, fill => $!fill ];
+        }
+    }
+
+    method serialize( --> Str ) {
+        SVG.serialize(svg => @!elements.map(-> $e { $e.serialize }).list);
+    }
+}
+```
+
+如果要运行此示例，则应将其保存为`SVG/Drawing.pm`当前目录。
+
+这给出了一个类来描述我们的图像作为一个整体，并协调数据结构的创建，这些数据结构将被序列化为我们的SVG文档，并且每个类都用于我们在原始示例中使用的`g`（Group）和`rect`（Rectangle）基元所以我们可以这样做：
+
+```
+use SVG::Drawing;
+
+my SVG::Drawing $drawing = SVG::Drawing.new(elements => [ 
+    SVG::Drawing::Group.new(elements => [
+        SVG::Drawing::Rectangle.new(x => 5, y => 5, width => 100, height => 100, stroke => "black", fill => "green" )
+    ]);
+]);
+
+say $drawing.serialize;
+```
+
+生成与第一个类似的文档。
+
+您可能已经注意到了`Element`stubbed方法的作用`serialize`：这是为了描述基本类所需的接口，以便收集基本类对象的类可以取决于`serialize`它们何时到来时序列化这些收集的对象。生成XML文档。从一开始就添加它可以更容易，更可靠地添加类来描述绘图的新基元。
+
+=== 让我们延伸！
+
+因此，除非我们有兴趣用相互叠加的不同大小的正方形制作圣诞树的相当现代主义的表示，否则我们需要一种创建我们需要的三角形的方法。幸运的是，SVG提供了许多从一组坐标点创建任意闭合形状的方法，但我们将使用最简单的方法，`polygon`它有一个属性`points`，它是以逗号分隔的顶点坐标的空格分隔列表。形状，最后一个连接到第一个以关闭形状。
+
+我们将使用一个新的Polygon类来描述`polygon`原语：
+
+```perl6
+use SVG;
+
+class SVG::Drawing {
+    role Element {
+        method serialize() {
+            ...
+        }
+    }
+
+    has Element @.elements;
+
+    has Int $.width;
+    has Int $.height;
+
+    class Group does Element {
+        has Element @.elements;
+        method serialize( --> Pair ) {
+            g => @!elements.map( -> $e { $e.serialize }).list;
+        }
+    }
+
+    class Rectangle does Element {
+        has Int $.x;
+        has Int $.y;
+        has Int $.width;
+        has Int $.height;
+        has Str $.stroke;
+        has Str $.fill;
+
+        method serialize( --> Pair) {
+            rect => [x =>  $!x, y => $!y, width => $!width, height => $!height, stroke => $!stroke, fill => $!fill ];
+        }
+    }
+
+    class Point {
+        has Int $.x;
+        has Int $.y;
+
+        method Str( --> Str ) {
+            ($!x, $!y).join: ',';
+        }
+    }
+
+    class Polygon does Element {
+        has Str $.stroke;
+        has Str $.fill;
+
+        has Point @.points;
+
+        method serialize( --> Pair ) {
+            polygon => [ points => @!points.join(' '), fill => $!fill, stroke => $!stroke ];
+        }
+
+    }
+
+    method serialize( --> Str ) {
+        SVG.serialize(svg => @!elements.map(-> $e { $e.serialize }).list);
+    }
+}
+```
+
+除了我们新的Polygon类之外，还有一个Point类描述了多边形顶点的坐标：`Str`提供的方法是为了简化`serialize`Polygon类方法的实现，因为`@.points`属性的元素将被字符串化为他们加入了`serialize`。
+
+所以现在我们可以生成类似外观的图像，但是以不同的方式构造，例如：
+
+```perl6
+use SVG::Drawing;
+
+my SVG::Drawing $drawing = SVG::Drawing.new(elements => [ 
+    SVG::Drawing::Group.new(elements => [
+        SVG::Drawing::Polygon.new(stroke => "black", fill => "green", points => [
+            SVG::Drawing::Point.new(x => 5, y => 5),
+            SVG::Drawing::Point.new(x => 105, y => 5),
+            SVG::Drawing::Point.new(x => 105, y => 105),
+            SVG::Drawing::Point.new(x => 5, y => 105)
+        ])
+    ]);
+]);
+
+say $drawing.serialize;
+```
+
+这将生成一个XML文档，如：
+
+```
+<svg xmlns="http://www.w3.org/2000/svg" 
+     xmlns:svg="http://www.w3.org/2000/svg" 
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+	<g>
+		<polygon points="5,5 105,5 105,105 5,105" fill="green" stroke="black" />
+	</g>
+</svg>
+```
+
+
+
+所以现在我们几乎拥有了绘制Chritmas树所需的一切，但在这一点上，值得退一步，展示对未来自我（或者其他可能需要处理代码的人）的爱。
+
+=== 一个重构点
+
+当我们创建新的Polygon类时，我们复制了`S.stroke`和`$.fill`属性，并安排它们以类似于Rectangle类的方式进行序列化。如果我们赶时间这可能是有意义的，这些是他们可能被使用的唯一地方，但是当我们阅读SVG文档时，很明显它们可以应用于许多SVG原语，因此重构是有意义的。现在，在我们添加任何可能需要它们的类之前。
+
+最明显的方法是创建一个包含属性的新角色，并提供一个方法，该方法返回表示序列化中属性的对列表：
+
+```perl6
+use SVG;
+
+class SVG::Drawing {
+    role Element {
+        method serialize() {
+            ...
+        }
+    }
+
+    role Styled {
+        has Str $.stroke;
+        has Str $.fill;
+        
+        method styles() {
+            ( stroke => $!stroke, fill => $!fill ).grep( { .value.defined } );
+        }
+
+    }
+
+    has Element @.elements;
+
+    has Int $.width;
+    has Int $.height;
+
+    class Group does Element {
+        has Element @.elements;
+        method serialize( --> Pair ) {
+            g => @!elements.map( -> $e { $e.serialize }).list;
+        }
+    }
+
+    class Rectangle does Element does Styled {
+        has Int $.x;
+        has Int $.y;
+        has Int $.width;
+        has Int $.height;
+
+        method serialize( --> Pair) {
+            rect => [x =>  $!x, y => $!y, width => $!width, height => $!height, |self.styles ];
+        }
+    }
+
+    class Point {
+        has Int $.x;
+        has Int $.y;
+
+        method Str( --> Str ) {
+            ($!x, $!y).join: ',';
+        }
+    }
+
+    class Polygon does Element does Styled {
+
+        has Point @.points;
+
+        method serialize( --> Pair ) {
+            polygon => [ points => @!points.join(' '), |self.styles ];
+        }
+
+    }
+
+    method serialize( --> Str ) {
+        SVG.serialize(svg => @!elements.map(-> $e { $e.serialize }).list);
+    }
+}
+```
+
+所以现在我们有一个双重好处，我们可以添加一个新的样式类而不必复制属性，而且我们可以添加我们可能想要的新样式属性，而无需更改消耗类。
+
+通过一些额外的工作，我们可能失去了从the中的角色调用方法的需要`serialize`，比如说，使用属性上的特征，这将允许我们选择要序列化的属性，但我将把它当作一个随着圣诞节的到来，我们仍然没有树。
+
+=== 一个进一步的抽象
+
+现在我们处于一个很好的位置来创建我们的圣诞树，因为我们需要的三角形只是一个多边形的三面形状，但我们想要不止一个并且顶点的计算将是相当重复，加上，因为我为了简单而任意选择使用等边三角形，其他两个角的坐标可以从顶点和边长度的坐标计算，所以如果我们有一个三角类它可以自我计算，我们只需关注自己的大小和位置：
+
+```perl6
+use SVG;
+
+class SVG::Drawing {
+    role Element {
+        method serialize() {
+            ...
+        }
+    }
+
+    role Styled {
+        has Str $.stroke;
+        has Str $.fill;
+        
+        method styles() {
+            ( stroke => $!stroke, fill => $!fill ).grep( { .value.defined } );
+        }
+
+    }
+
+    has Element @.elements;
+
+    has Int $.width;
+    has Int $.height;
+
+    class Group does Element {
+        has Element @.elements;
+        method serialize( --> Pair ) {
+            g => @!elements.map( -> $e { $e.serialize }).list;
+        }
+    }
+
+    class Rectangle does Element does Styled {
+        has Int $.x;
+        has Int $.y;
+        has Int $.width;
+        has Int $.height;
+
+        method serialize( --> Pair) {
+            rect => [x =>  $!x, y => $!y, width => $!width, height => $!height, |self.styles ];
+        }
+    }
+
+    class Point {
+        has Numeric $.x;
+        has Numeric $.y;
+
+        method Str( --> Str ) {
+            ($!x, $!y).join: ',';
+        }
+    }
+
+    class Polygon does Element does Styled {
+
+        has Point @.points;
+
+        method serialize( --> Pair ) {
+            polygon => [ points => @.points.join(' '), |self.styles ];
+        }
+
+    }
+
+    class Triangle is Polygon {
+        has Point $.apex is required;
+        has Int   $.side is required;
+
+        method points() {
+            ($!apex, |self.base-points);
+        }
+
+        method base-points() {
+            my $y = $!apex.y + self.get-height;
+
+            (Point.new(:$y, x => $!apex.x - ( $!side / 2 )), Point.new(:$y, x => $!apex.x + ( $!side / 2 )));
+        }
+
+        method get-height(--> Num ) {
+            sqrt($!side**2 - ($!side/2)**2)
+        }
+
+    }
+
+    method dimensions() {
+        ( height => $!height, width => $!width ).grep( { .value.defined } );
+
+    }
+
+    method serialize( --> Str ) {
+        SVG.serialize(svg =>  [ |self.dimensions, |@!elements.map(-> $e { $e.serialize })]);
+    }
+}
+```
+
+这需要在其他地方进行一些小的改动。在`Int`作为三角形的顶点的计算结果可能不是整数（或我们会风了一个靠不住的三角形，如果我们roumded他们）还点的属性是放宽到数字`serialize`多边形的方法是改变使用访问器方法`points`而不是直接使用属性，因此可以在我们的Triangle类中过度使用以计算三角形基线的附加点。
+
+计算本身只使用一些初级几何来确定基线到顶点的高度，使用毕达哥拉斯定理得到两个基线点的y坐标，x坐标是两侧边长的一半。顶点x坐标。
+
+此外，当我测试这个时，我注意到我之前没有实现高度和宽度属性的序列化，我们已经离开它，因为矩形没有超出默认绘图区域，但是三角形做了，因此没有显示。
+
+无论如何，现在我们可以用最少的代码绘制一个三角形：
+
+```perl6
+use SVG::Drawing;
+
+my SVG::Drawing $drawing = SVG::Drawing.new(
+    elements => [ 
+        SVG::Drawing::Group.new(elements => [
+            SVG::Drawing::Triangle.new(stroke => "black", fill => "green", 
+                apex => SVG::Drawing::Point.new(x => 100, y => 50),
+                side => 50,
+            )
+        ])
+    ],
+    height  => 300,
+    width   => 200
+);
+
+say $drawing.serialize;
+```
+
+这将在足够大的空间中提供一个漂亮的绿色等边三角形来绘制我们的树。
+
+=== 最后是我们的树
+
+现在我们有了创建简单树的组成部分的方法，因此我们可以将它们与一个相对简单的脚本放在一起：
+
+```perl6
+use SVG::Drawing;
+
+my SVG::Drawing $drawing = SVG::Drawing.new(
+    elements => [ 
+        SVG::Drawing::Group.new(elements => [
+            SVG::Drawing::Triangle.new(stroke => "green", fill => "green", 
+                apex => SVG::Drawing::Point.new(x => 100, y => 50),
+                side => 50,
+            ),
+            SVG::Drawing::Triangle.new(stroke => "green", fill => "green", 
+                apex => SVG::Drawing::Point.new(x => 100, y => 75),
+                side => 75,
+            ),
+            SVG::Drawing::Triangle.new(stroke => "green", fill => "green", 
+                apex => SVG::Drawing::Point.new(x => 100, y => 100),
+                side => 100,
+            ),
+            SVG::Drawing::Rectangle.new(stroke  => "brown",
+                                        fill    => "brown",
+                                        x       =>  90,
+                                        y       => 185,
+                                        width   => 20,
+                                        height  => 40),
+        ])
+    ],
+    height  => 300,
+    width   => 200
+);
+
+say $drawing.serialize;
+```
+
+我通过反复试验选择了形状的大小和位置，它可能更科学地完成。
+
+无论如何，这会产生这样的XML：
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" 
+     xmlns:svg="http://www.w3.org/2000/svg" 
+     xmlns:xlink="http://www.w3.org/1999/xlink" 
+     height="300" 
+     width="200">
+	<g>
+		<polygon points="100,50 75,93.30127018922192 125,93.30127018922192" stroke="green" fill="green" />
+		<polygon points="100,75 62.5,139.9519052838329 137.5,139.9519052838329" stroke="green" fill="green" />
+		<polygon points="100,100 50,186.60254037844385 150,186.60254037844385" stroke="green" fill="green" />
+		<rect x="90" y="185" width="20" height="40" stroke="brown" fill="brown" />
+	</g>
+</svg>
+```
+
+这是一个合理的程式化圣诞树，用户代码最少。
+
+由于我们设计模块的方式，我们已经把自己放在一个好的地方进一步扩展它，比如说，一个Circle类可以用来轻松地为我们的树添加彩色小玩意。
+
+SVG是一个非常丰富的规范，具有大量基元，可满足大多数绘图需求，我们只实现了绘制树所需的最小值，但这可以扩展为支持您想要的任何类型的绘图。
+
+link:https://perl6advent.files.wordpress.com/2018/12/tree.png?w=788[树]
+

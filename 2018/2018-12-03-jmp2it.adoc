@@ -1,0 +1,59 @@
+== 第三天 – Perl 6 – 跳转到那儿
+
+link:https://github.com/nige123/jmp.nigelhamilton.com[jmp]是一个Perl 6驱动的命令行程序，我每天都使用它来浏览成堆的Perl并快速跳转到我的$EDITOR。 我尝试在编码时保持link:https://perl6advent.wordpress.com/2015/12/20/perl-6-christmas-have-an-appropriate-amount-of-fun/[流状态]，并且能够快速搜索文件然后直接跳转到编辑器中。
+
+**jmp** 是一个简单的基于终端的前端到您最喜欢的代码搜索工具（例如，rgrep，ag，ack，git grep等）。 它会显示一个搜索结果列表，您可以在跳转到编辑文件之前快速浏览（例如，vim，nano，link:https://commaide.com/[comma]等）。
+
+它的工作原理如下：
+
+!link:https://perl6advent.files.wordpress.com/2018/11/jmp2-final.gif?w=600&zoom=2[img]
+
+最近我重构了 **jmp**，以便在 link:https://github.com/ab5tract/Terminal-Print[Terminal::Print] 模块的帮助下改进用户界面。 Terminal::Print 提供了一个方便的二维网格，用于在终端屏幕上绘图。 还有一个用于异步处理用户输入的模块。
+
+这是 **jmp** 代码，只要用户按下某个键，它就会响应：
+
+```perl6
+my $in-supply = decoded-input-supply;
+my $timer     = Supply.interval(1).map: { Tick };
+my $supplies  = Supply.merge($in-supply, $timer);
+
+react {
+    whenever $supplies -> $_ {
+        when Tick {}
+        when 'CursorUp'                 { self.pager.cursor-up;   }
+        when 'CursorDown'               { self.pager.cursor-down; }
+        when 'CursorRight' | 'PageDown' { self.pager.next;        }
+        when 'CursorLeft'  | 'PageUp'   { self.pager.previous;    }
+        when 'x' | 'X'                  { self.pager.exit-page;   }
+        when 'e' | 'E' {
+             self.pager.edit-selected($!editor);
+        }
+        when $_ ~~ Str and $_.ord == 13 {
+             # the user pressed ENTER
+             self.pager.edit-selected($!editor);
+        }
+    }
+}
+```
+
+此代码设置用户输入事件的异步 supply，并且只要事件触发（例如，用户按下PageUp），它就会做出反应。 但是如果用户一次按下很多键会发生什么？ 如何以有序的方式更新终端屏幕？
+
+由于 Jonathan Worthington的 link:https://github.com/jnthn/oo-monitors[OO::Monitors] 模块和 **monitor** 关键字，解决方案在 link:https://github.com/ab5tract/Terminal-Print/blob/master/lib/Terminal/Print/Grid.pm6[Terminal::Print::Grid] 中找到。 这确保了一次只有一个线程可以在 grid 对象的方法中：
+
+```perl6
+use OO::Monitors;
+unit monitor Terminal::Print::Grid;
+```
+
+制作自己的 Perl 6 驱动的命令行工具是学习该语言的好方法。 如果您需要终端接口，请查看 link:https://github.com/ab5tract/Terminal-Print[Terminal::Print]。 为了加速命令行工具，将代码放在模块中是一个很好的技巧，因此Perl 6可以预编译它以加快启动时间（例如，link:https://github.com/nige123/jmp.nigelhamilton.com/blob/master/lib/JMP/CLI.pm[CLI.pm]）。
+
+要安装jmp的第2版，首先安装link:https://perl6.org/downloads/[Perl 6]，然后使用link:https://github.com/ugexe/zef[zef] Perl 6模块管理器来安装它：
+
+```shell
+shell> zef install jmp   # or zef upgrade jmp
+shell> jmp config        # set up jmp to use your tools
+shell> jmp find sub MAIN # find files containing "sub MAIN" 
+```
+
+随着我们越来越接近圣诞节，请留意更多的命令行工具会被打开。
+

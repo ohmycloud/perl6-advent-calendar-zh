@@ -1,0 +1,241 @@
+== 第十五天 - 使用 Perl 6 构建(小型)航天器
+
+=== 炫耀长耳朵
+
+在link:https://perl6advent.wordpress.com/2018/12/14/designing-a-space-ship-with-perl-6/[上一篇文章]中，我们遇到了某种特殊精灵的魔力：
+
+```perl6
+enum Fuel <Solid Liquid Gas>;
+
+class SpeedChoice does ASNChoice {
+    method ASN-choice { { mph => (1 => Int), kmph => (0 => Int) } }
+}
+
+class Rocket does ASNSequence {
+    has Str $.name is UTF8String;
+    has Str $.message is default-value("Hello World") is UTF8String;
+    has Fuel $.fuel;
+    has SpeedChoice $.speed is optional;
+    has Str @.payload is UTF8String;
+
+    method ASN-order { <$!name $!message $!fuel $!speed @!payload> }
+}
+
+my $rocket = Rocket.new(
+    name => 'Falcon',
+    fuel => Solid,
+    speed => SpeedChoice.new((mph => 18000)),
+    payload => [ "Car", "GPS" ]);
+
+my $rocket-bytes = ASN::Serializer.serialize($rocket, :mode(Implicit));
+
+#`[ Result:
+      Blob.new(
+          0x30, 0x1B, # Outermost SEQUENCE
+          0x0C, 0x06, 0x46, 0x61, 0x6C, 0x63, 0x6F, 0x6E, # NAME, MESSAGE is missing
+          0x0A, 0x01, 0x00, # ENUMERATED
+          0x81, 0x02, 0x46, 0x50, # CHOICE
+          0x30, 0x0A, # SEQUENCE OF UTF8String
+              0x0C, 0x03, 0x43, 0x61, 0x72,  # UTF8String
+              0x0C, 0x03, 0x47, 0x50, 0x53); # UTF8String
+]
+
+say ASN::Parser.new(:type(Rocket)).parse($rocket-bytes) eqv $rocket; # Certainly true!
+```
+
+=== 类型，类型，类型
+
+有些事情是不言而喻的（或者对于我来说，用了无数个小时来看精灵如何玩魔法）
+
+```perl6
+# 1
+role ASNSequence {
+    # every descendant has to fulfill this important vow!
+    method ASN-order {...}
+}
+
+# 2
+role ASNChoice {
+    has $.choice-value;
+
+    # if you have to choose, choose wisely!
+    method ASN-choice() {...}
+    method ASN-value() { $!choice-value }
+
+    method new($choice-value) { $?CLASS.bless(:$choice-value) }
+}
+
+# 3
+role ASN::StringWrapper {
+    has Str $.value;
+
+    # Don't do this at home. :]
+    method new(Str $value) { self.bless(:$value) }
+}
+
+# UTF8String wrapper
+role ASN::Types::UTF8String does ASN::StringWrapper {}
+
+# Yes, it is _this_ short
+multi trait_mod:(Attribute $attr, :$UTF8String) is export { $attr does ASN::Types::UTF8String }
+```
+
+- 第一个是一个简单的角色，它允许我们强制执行 `ASN-order` 方法  
+- 第二个是持有 CHOICE 实际值的角色，并强制执行用户必须描述可能选项的方法  
+- 第三个描述了一个特性，如 `is UTF8String`，它为属性添加一个角色，这将在以后帮助我们，并提供角色本身以及一些包装代码  
+
+与第三部分表达的方式相同，可以表达 `OPTIONAL`，`DEFAULT` “traits”和其他字符串类型。
+
+=== 进步，进化，序列化！
+
+通过一系列规则可以做什么来序列化事物？鉴于 `Basic Encoding Rules` 对不同类型的值有不同的处理方式（如果你思考一下就不会觉得太奇怪！）以及一个类型可以嵌套在另一个类型中的事实，更不用说是递归的了？我觉得它可能不太难实现。 Perl 6 的 multi-dispatch 正派上用场！
+
+一般来说，事情如下：
+
+```perl6
+class ASN::Serializer {
+    ...
+
+    # like this:
+    multi method serialize(ASNSequence $sequence, Int $index = 48, :$debug, :$mode = Implicit) { ... }
+
+    # or this:
+    multi method serialize(Int $int is copy where $int.HOW ~~ Metamodel::ClassHOW, Int $index = 2, :$debug, :$mode) { ... }
+    multi method serialize($enum-value where $enum-value.HOW ~~ Metamodel::EnumHOW, Int $index = 10, :$debug, :$mode) { ... }
+
+    # or even this:
+    multi method serialize(Positional $sequence, Int $index is copy = 16, :$debug, :$mode) { ... }
+
+    ...
+```
+
+描述该领域所有内容的规则是：
+
+- 对于复杂类型，必须引入一个 *has*，如 `ASNStructure`，迭代其内容，逐个序列化内部，并正确加入它。在一天结束时，对于每个这样的 `Serializer` 程序都具有已知的属性类型或者可以基于特征应用的角色（方便！）推断它，可以具有属性的值（或者如果属性是可选的并且可以省略则可以跳过该属性） ，可以包装/解包基于 `Str` 的类型 - 所有这些都允许一个序列化类型  
+- 对于简单类型，可以根据给定的规则对其进行序列化  
+- 对于一些方便的“特殊情况”，例如像 `@.foo` 那样的属性，需要推断发生了什么（在这种情况下，它将是 `SEQUENCEOF` 类型）并正确地序列化它  
+
+除了带有值的第一个参数外，还有三个参数：
+
+- `$index` 整数派上用场，特别是对于 BER 特定的索引  
+- `$debug` flag 启用调试输出（当调试一些二进制协议时，这非常有用！）  
+- 将来可能会使用 `$mode` 值来支持 `IMPLICIT` 以外的标记模式。
+
+=== 如果有时间进行编码，总会有时间进行解码
+
+什么是解析器？如果序列化程序是“向后解析器”，那么解析器就是......是的，它是一个向后的序列化器！但是这是什么意思？通常，序列化器接收一些 A 并产生一些给定形式的 B。并且解析器获取给定形式的一些 B 并产生一些 A。
+
+假设有人知道正在解析的确切类型：
+
+```perl6
+my $parser = ASN::Parser.new(type => Rocket);
+say $parser.parse($rocket-ber); # Yes, here goes our rocket!
+```
+
+如果要解析此 `Buf` 内容，则必须指定其类型，就像下面这样：
+
+```perl6
+multi method parse(Blob $input, ...) {
+    ...
+    self.parse($input, $!type, ...);
+}
+```
+
+这个方法不知道它所解析的类型，但它调用了它的朋友：`parse($input, SomeCoolType, ...)` 超出了传递的内容和它可以得到的类型。如果知道了类型，多重分派将很乐意为我们提供必要的解析实现。对于简单的类型。对于复杂的类型。对于“特殊”类型。有了 Perl 6，任何一天都会发生便利的奇迹！
+
+让我们再看一眼：
+
+```perl6
+# Details and basic indentation are omitted for clarity
+
+...
+
+multi method parse(Buf $input is rw, ASNSequence $type, :$debug, :$mode) {
+    # `$type` here is, really, not a value, but a Type Object. As `ASN-order` is defined on
+    # type, there are no problems with gathering necessary info:
+    my @params = do gather {
+        for $type.ASN-order.kv -> $i, $field {
+            # Here be dragons! Or, rather, MOP is used here!
+        }
+    }
+    # A-a-and a ready object of a type our parser has no clue about is returned.
+    # Yes, it is kind of neat. :)
+    $type.bless(|Map.new(@params));
+}
+```
+
+事实上，更简单的类型更简单，就像这样：
+
+```perl6
+multi method parse(Buf $input is rw, $enum-type where $enum-type.HOW ~~ Metamodel::EnumHOW, :$debug, :$mode) {
+    say "Parsing `$input[0]` out of $input.perl()" if $debug;
+    $enum-type($input[0]);
+}
+```
+
+但是，必须保持规则，以表明错误，并做各种“无聊”的事情，而不是“必要”的事情。虽然 Perl 6 允许我们在这个区域使用一些不错的技巧，但在圣诞节前看它并不是太感兴趣。
+
+=== What o’clock? Supply o’clock!
+
+如果你已经厌倦了所有这些与 `ASN.1` 相关的东西，我有一个好消息：它已经快结束了。 \O/  
+
+虽然所有这些“类型是我的一等公民而我很酷”技巧很有趣，但还有一个技巧可以展示，虽然是相关的，但却有点完全不同。  
+
+`ASN.1` 解析器应该是增量的。更重要的是，它必须是非常明确的，因为人们可以使用未知长度的值。可以做些什么来快速使我们的解析器增量？我们快点做吧：
+
+```perl6
+class ASN::Parser::Async {
+    has Supplier::Preserving $!out = Supplier::Preserving.new;
+    has Supply $!values = $!out.Supply;
+    has Buf $!buffer = Buf.new;
+    has ASN::Parser $!parser = ASN::Parser.new(type => $!type);
+    has $.type;
+
+    method values(--> Supply) {
+        $!values;
+    }
+
+    method process(Buf $chunk) {
+        $!buffer.append: $chunk;
+        loop {
+            # Minimal message length
+            last if $!buffer.elems < 2;
+            # Message is incomplete, good luck another time
+            last unless $!parser.is-complete($!buffer);
+            # Cut off tag, we know what it is already in this specific case
+            $!parser.get-tag($!buffer);
+            my $length = $!parser.get-length($!buffer);
+            # Tag and length are already cut down here, take only value
+            my $item-octets = $!buffer.subbuf(0, $length);
+            $!out.emit: $!parser.parse($item-octets, :!to-chop); # `!to-chop`, because "prefix" is already cut
+            $!buffer .= subbuf($length);
+        }
+    }
+
+    method close() {
+        $!out.done;
+    }
+}
+```
+
+它可以像这样使用：
+
+```perl6
+my $parser = ASN::Parser::Async.new(type => Rocket);
+
+$parser.values.tap({ say "I get a nice thing!"; });
+
+react {
+    whenever $socket.data-arrived -> $chunk {
+        $parser.process($chunk);
+        LAST { $parser.close; }
+    }
+}
+```
+
+这是所有必须添加的，以使这种 `Parser` 增量为这个最小的情况。
+
+当然，正如你可以猜到的那样，我正在写的东西有点过于具体，不仅仅是我的想象力，不仅是精灵，而是一群完整的冒险者（他们也可以处理一些二进制的东西！）。该实现已在 link:https://github.com/Altai-man/ASN-BER[ASN::BER 仓库]中提供。虽然它可能是一个非常早期的 alpha 版本，有许多东西甚至还没有计划好，并且有很长的篇幅可以用来改善这个模块的整体状态，它已经对我有用了解我的工作前面提到的半秘密。仓库肯定会打开建议，错误报告（甚至可能是 hug 报告），因为还有大量工作要做，但这是另一个故事了。
+
+祝您度过愉快的一天，并确保在圣诞假期休息好！
+

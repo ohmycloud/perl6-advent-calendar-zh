@@ -1,0 +1,64 @@
+= Perl 6 Advent Calendar
+:description: Perl 6 日历
+:keywords: perl6,example
+:Revision: 1.0
+:icons: font
+:source-highlighter: pygments
+//:pygments-style: manni
+:source-language: perl6
+:pygments-linenums-mode: table
+:toc: left
+:doctype: book
+:lang: zh
+:sectnums:
+
+include::./2017/2017-12-01-第一天-Perl6鬼精灵-圣诞节实用指南.adoc[]
+include::./2017/2017-12-02-第二天-Perl6中的符号,变量和容器.adoc[]
+include::./2017/2017-12-03-第三天–LetterOps-with-Perl6.adoc[]
+include::./2017/2017-12-04-第四天-使用Grammars进行解析.adoc[]
+include::./2017/2017-12-05-第五天-使用Perl6签名解构参数.adoc[]
+include::./2017/2017-12-06-第六天-Perl-6-书评.adoc[]
+include::./2017/2017-12-07-第七天–Test-All-The-Things.adoc[]
+include::./2017/2017-12-08-第八天–Adventures-in-NQP-Land-Hacking-the-Rakudo-Compiler.adoc[]
+include::./2017/2017-12-09-第九天–HTTP-and-Web-Sockets-with-Cro.adoc[]
+include::./2017/2017-12-10-第十天–Wrapping-Rats.adoc[]
+include::./2017/2017-12-11-第十一天—Perl6中的所有的星号.adoc[]
+include::./2017/2017-12-12-第十二天–The-Year-of-Perl-6-Books.adoc[]
+include::./2017/2017-12-13-第十三天-使用-Perl-6-挖掘维基百科.adoc[]
+include::./2017/2017-12-14-第十四天-在Perl-6中构建和测试大Grammars.adoc[]
+include::./2017/2017-12-15-第十五天-带有Promise的简单网络爬虫.adoc[]
+include::./2017/2017-12-16-第十六天-Perl-6性能改进.adoc[]
+include::./2017/2017-12-17-第十七天-关于消息传递.adoc[]
+include::./2017/2017-12-18-第十八天-Perl-6支持的工作流.adoc[]
+include::./2017/2017-12-19-第十九天-Language-Independent-Validation-Rules-(LIVR)-for-Perl6.adoc[]
+include::./2017/2017-12-20-第二十天-宏的进阶.adoc[]
+include::./2017/2017-12-21-第二十一天-数独与Junctions和集合.adoc[]
+include::./2017/2017-12-22-第二十二天-Perl-6.d的特性.adoc[]
+include::./2017/2017-12-23-第二十三天-Perl-6高尔夫.adoc[]
+include::./2017/2017-12-24-第二十四天-解魔方.adoc[]
+include::./2017/2017-12-25-第二十五天-并发HTTP服务器实现.adoc[]
+include::./2018/2018-12-01-porting-vigilance.adoc[]
+include::./2018/2018-12-02-document-every-thing.adoc[]
+include::./2018/2018-12-03-jmp2it.adoc[]
+include::./2018/2018-12-04-new-perl6-pod-features-for-the-new-year.adoc[]
+include::./2018/2018-12-05-variables.adoc[]
+include::./2018/2018-12-06-lazy-and-industrious-elves.adoc[]
+include::./2018/2018-12-07-automatic-on-a-cellular-level.adoc[]
+include::./2018/2018-12-08-make-your-perl6-grammar-compact.adoc[]
+include::./2018/2018-12-09-constants-in-perl6.adoc[]
+include::./2018/2018-12-10-jmp-starting-your-work-flow.adoc[]
+include::./2018/2018-12-11-testing-your-times-tables-with-perl-6.adoc[]
+include::./2018/2018-12-12-building-a-flexible-grammar.adoc[]
+include::./2018/2018-12-13-web-server-from-scratch-with-cro-and-debian.adoc[]
+include::./2018/2018-12-14-使用Perl6设计(小)航天器.adoc[]
+include::./2018/2018-12-15-building-a-little-spacecraft-with-perl6.adoc[]
+include::./2018/2018-12-16-checking-your-list-twice.adoc[]
+include::./2018/2018-12-17-compiling-our-way-to-happiness.adoc[]
+include::./2018/2018-12-18-an-avg-christmas-tree.adoc[]
+include::./2018/2018-12-19-interactive-desktop-apps.adoc[]
+include::./2018/2018-12-20-Perl6中的命题组合.adoc[]
+include::./2018/2018-12-21-a-red-secret-santa.adoc[]
+include::./2018/2018-12-22-testing-cro-http-apis.adoc[]
+include::./2018/2018-12-23-blin-it-is-christmas-soon.adoc[]
+include::./2018/2018-12-24-topic-modeling-with-perl6.adoc[]
+include::./2018/2018-12-25-calling-number-names.adoc[]

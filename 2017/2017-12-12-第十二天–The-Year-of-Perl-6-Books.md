@@ -1,1 +1,0 @@
-[第十二天 – The Year of Perl 6 Books](https://perl6advent.wordpress.com/2017/12/12/day-12-the-year-of-perl-6-books/)

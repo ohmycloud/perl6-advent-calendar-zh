@@ -1,0 +1,303 @@
+== 第九天 – HTTP and Web Sockets with Cro
+
+礼物不仅仅是圣诞节的时候才有。今年夏天，在瑞士 Perl 工作室 - 精美地坐落在阿尔卑斯山 - 我有幸透露了 link:http://cro.services/[Cro]。 Cro 是一组用于在 Perl 6 中构建服务的库，以及一些用于 stub，run 和跟踪服务的开发工具。 Cro 主要关注使用 HTTP（包括HTTP/2.0）和 Web 套接字构建服务，但可以提供对 ZeroMQ 的早期支持，并计划在未来推出一系列其他选项。
+
+=== 响应式管道
+
+Cro 遵循 Perl 的设计原则，使简单的事情变得简单，并且让困难的事情变得可能。就像 Git 一样，Cro 可以被认为是具有瓷器（使简单的事情变得简单）和管道（使困难的事情成为可能）。管道水平由组成管道的组件组成。这些组件具有不同的形状，例如源，传输和下沉。这是一个将 HTTP 请求转换为 HTTP 响应的转换：
+
+```perl6
+use Cro;
+use Cro::HTTP::Request;
+use Cro::HTTP::Response;
+
+class MuskoxApp does Cro::Transform {
+    method consumes() { Cro::HTTP::Request }
+    method produces() { Cro::HTTP::Response }
+    method transformer(Supply $pipeline --> Supply) {
+        supply whenever $pipeline -> $request {
+            given Cro::HTTP::Response.new(:$request, :200status) {
+                .append-header: "Content-type", "text/html";
+                .set-body: "Muskox Rocks!\n".encode('ascii');
+                .emit;
+            }
+        }
+    }
+}
+```
+
+现在，让我们用一个 TCP 监听器，一个 HTTP 请求解析器和一个 HTTP 响应序列化器来编写它：
+
+```perl6
+use Cro::TCP;
+use Cro::HTTP::RequestParser;
+use Cro::HTTP::ResponseSerializer;
+
+my $server = Cro.compose:
+    Cro::TCP::Listener.new(:port(4242)),
+    Cro::HTTP::RequestParser.new,
+    MuskoxApp,
+    Cro::HTTP::ResponseSerializer;
+```
+
+这将返回一个Cro :: Service，我们现在可以启动，并在Ctrl + C时停止：
+
+```perl6
+$server.start;
+react whenever signal(SIGINT) {
+    $server.stop;
+    exit;
+}
+```
+
+运行。然后 `curl` 它。
+
+```
+$ curl http://localhost:4242/
+Muskox Rocks!
+```
+
+不错。但是如果我们想要一个HTTPS服务器呢？如果我们有方便的关键和证书文件，这只是一个用TLS监听器替换TCP监听器的例子：
+
+```perl6
+use Cro::TLS;
+
+my $server = Cro.compose:
+    Cro::TLS::Listener.new(
+        :port(4242),
+        :certificate-file('certs-and-keys/server-crt.pem'),
+        :private-key-file('certs-and-keys/server-key.pem')
+    ),
+    Cro::HTTP::RequestParser.new,
+    MuskoxApp,
+    Cro::HTTP::ResponseSerializer;
+```
+
+运行。然后 `curl -k` 它。
+
+```
+$ curl -k https://localhost:4242/
+Muskox Rocks!
+```
+
+和中间件？这只是构成管道的另一个组成部分。或者，从另一个角度来看，对于Cro，一切都是中间件。即使请求解析器或响应序列化器可以很容易地被替换，如果需要的话（这听起来像是一件奇怪的事情需要，但这实际上是实现FastCGI会涉及的）。
+
+所以，这就是克罗的方式。它还需要大量的样板才能在此级别上工作。带上瓷器！
+
+=== HTTP 服务器，简单的方法
+
+Cro::HTTP::Server 类摆脱了构建 HTTP 处理管道的样板。从前面的例子变成：
+
+```perl6
+use Cro;
+use Cro::HTTP::Server;
+
+class MuskoxApp does Cro::Transform {
+    method consumes() { Cro::HTTP::Request }
+    method produces() { Cro::HTTP::Response }
+    method transformer(Supply $pipeline --> Supply) {
+        supply whenever $pipeline -> $request {
+            given Cro::HTTP::Response.new(:$request, :200status) {
+                .append-header: "Content-type", "text/html";
+                .set-body: "Muskox Rocks!\n".encode('ascii');
+                .emit;
+            }   
+        }
+    }
+}
+
+my $server = Cro::HTTP::Server.new: :port(4242), :application(MuskoxApp);
+$server.start;
+react whenever signal(SIGINT) {
+    $server.stop;
+    exit;
+}
+```
+
+这里没有魔法;它真的只是一个更方便的方式来组成一条管线。虽然这只是对HTTP / 1. *的节省，但HTTP / 2.0管道涉及更多的组件，而支持这两者的管道仍然更为复杂。相比之下，配置Cro :: HTTP :: Server可以轻松地完成支持HTTP / 1.1和HTTP / 2.0的HTTPS：
+
+```perl6
+my %tls =
+    :certificate-file('certs-and-keys/server-crt.pem'),
+    :private-key-file('certs-and-keys/server-key.pem');
+my $server = Cro::HTTP::Server.new: :port(4242), :application(MuskoxApp),
+    :%tls, :http<1.1 2>;
+```
+
+=== 通向幸福的途径
+
+Cro中的Web应用程序最终总是将HTTP请求转换为HTTP响应的转换。然而，想要以完全相同的方式处理所有请求的情况非常罕见。通常，不同的URL应该路由到不同的处理程序。输入Cro :: HTTP :: Router：
+
+```perl6
+use Cro::HTTP::Router;
+use Cro::HTTP::Server;
+
+my $application = route {
+    get -> {
+        content 'text/html', 'Do you like dugongs?';
+    }
+}
+
+my $server = Cro::HTTP::Server.new: :port(4242), :$application;
+$server.start;
+react whenever signal(SIGINT) {
+    $server.stop;
+    exit;
+}
+```
+
+路由块返回的对象执行Cro :: Transform角色，这意味着它可以很好地与Cro.compose（...）配合使用。然而，使用路由器编写应用程序会更方便一些！让我们看看更仔细一点：
+
+```perl6
+get -> {
+    content 'text/html', 'Do you like dugongs?';
+}
+```
+
+在这里，get是说这个处理程序只处理HTTP GET请求。尖头块的空签名意味着不需要URL段，所以该路由仅适用于/。然后，而不是必须做一个响应对象实例，添加一个头，并编码一个字符串，内容函数完成这一切。
+
+路由器是为了利用Perl 6签名而建立的，同时也可以让Perl 6程序员感觉自然。路由段通过声明参数来建立，而文字串段恰好匹配：
+
+```perl6
+get -> 'product', $id {
+    content 'application/json', {
+        id => $id,
+        name => 'Arctic fox photo on canvas'
+    }
+}
+```
+
+使用curl进行快速检查表明，它还负责为我们序列化JSON：
+
+```perl6
+$ curl http://localhost:4242/product/42
+{"name": "Arctic fox photo on canvas","id": "42"}
+```
+
+JSON正文序列化程序由内容类型激活。这是可能的，也很简单，可以实现并插入自己的身体序列器。
+
+想要捕获多个网址段？ Slurpy参数也可以工作，这对于服务静态资产时可以很方便地与静态结合使用，也许深层次的多级目录：
+
+```perl6
+get -> 'css', *@path {
+    static 'assets/css', @path;
+}
+```
+
+可选参数适用于可能提供或可能不提供的段。使用子集类型来限制允许的值也可以。 Int只接受URL段中的值以整数形式解析的请求：
+
+```perl6
+get -> 'product', Int $id {
+    content 'application/json', {
+        id => $id,
+        name => 'Arctic fox photo on canvas'
+    }
+}
+```
+
+命名参数用于接收查询字符串参数：
+
+```perl6
+get -> 'search', :$query {
+    content 'text/plain', "You searched for $query";
+}
+```
+
+这将填充在这样的请求中：
+
+```perl6
+$ curl http://localhost:4242/search?query=llama
+You searched for llama
+```
+
+这些也可以是类型约束和/或需要的（命名参数在Perl 6中默认是可选的）。 Cro路由器试图帮助你做好HTTP，方法是给出一个404错误来匹配一个URL段，405（方法不允许），当段匹配但是使用了错误的方法时，400当方法和段很好时，但查询字符串有问题。通过使用is标头并且是cookie特征的命名参数也可以用于接受和/或限制标头和cookie。
+
+路由器将所有路由编译成Perl 6语法，而不是一次一个地浏览路由。这意味着路线将使用NFA进行匹配，而不是一次一个地突破。此外，这意味着应用Perl 6最长的文字前缀规则，因此：
+
+```perl6
+get -> 'product', 'index' { ... }
+get -> 'product', $what { ... }
+```
+
+即使您按照相反的顺序编写了这些请求，它们总是会优先选择这两项中的第一项作为/ product / index的请求：
+
+```perl6
+get -> 'product', $what { ... }
+get -> 'product', 'index' { ... }
+```
+
+=== 中间件变得更容易
+
+有趣的是，HTTP中间件只是一个Cro :: Transform，但如果Cro是所有产品的话，那么写起来会不太有趣。令人高兴的是，有一些更简单的选择。路径块可以包含块之前和之后的块，这些块将在块中的任何路由处理之前和之后运行。因此，可以将HSTS标头添加到所有响应中：
+
+```perl6
+my $application = route {
+    after {
+        header 'Strict-transport-security', 'max-age=31536000; includeSubDomains';
+    }
+    # Routes here...
+}
+```
+
+或者对没有授权标头的所有请求使用HTTP 403 Forbidden进行响应：
+
+```perl6
+my $application = route {
+    before {
+        unless .has-header('Authorization') {
+            forbidden 'text/plain', 'Missing authorization';
+        }
+    }
+    # Routes here...
+}
+```
+
+其行为如下所示：
+
+```
+$ curl http://localhost:4242/
+Missing authorization
+$ curl -H"Authorization: Token 123" http://localhost:4242/
+<strong>Do you like dugongs?</strong>
+```
+
+=== 这只是一个供应链(Supply chain)
+
+所有的Cro实际上只是构建一系列Perl 6 Supply对象的一种方式。尽管中间件块之前和之后都很方便，但将中间件作为转换编写，无论何时使用语法，都可以访问Perl 6电源的全部功能。因此，如果您需要使用会话令牌进行请求并对会话数据库进行异步调用，并且只有发出请求才能进行进一步处理（或者重定向到登录页面），则可以这样做 - 阻止其他请求（包括同一连接上的请求）。
+
+事实上，Cro完全是根据更高级别的Perl 6并发功能构建的。没有明确的线程，也没有明确的锁定。相反，所有并发都是以Perl 6 Supply和Promise的形式表示的，并且由Perl 6运行时库决定，以便在多个线程上扩展应用程序。
+
+=== 哦，和WebSockets？
+
+事实证明，Perl 6提供的地图非常适合网络套接字。事实上，很好，Cro在API方面的增加相对较少。以下是一个（过度）简单的聊天服务器后端的外观：
+
+```perl6
+my $chat = Supplier.new;
+get -> 'chat' {
+    # For each request for a web socket...
+    web-socket -> $incoming {
+        # We start this bit of reactive logic...
+        supply {
+            # Whenever we get a message on the socket, we emit it into the
+            # $chat Supplier
+            whenever $incoming -> $message {
+                $chat.emit(await $message.body-text);
+            }
+            # Whatever is emitted on the $chat Supplier (shared between all)
+            # web sockets), we send on this web socket.
+            whenever $chat -> $text {
+                emit $text;
+            }
+        }
+    }
+}
+```
+
+请注意，这样做需要使用Cro :: HTTP :: Router :: WebSocket;导入提供网络套接字功能的模块。
+
+=== 综上所述
+
+这只是对Cro所提供的内容的一瞥。没有空间讨论HTTP和Web套接字客户端，用于存根和运行项目的cro命令行工具，提供用于执行相同操作的Web UI的Cro Web工具，或者如果您将CRO_TRACE = 1粘贴到您的环境中，您可以获得大量有关请求和响应处理的多汁调试细节。
+
+要了解更多信息，请查看Cro文档，其中包括关于构建单页应用程序的教程。如果你有更多的问题，最近在Freenode上创建了#cro IRC频道
+

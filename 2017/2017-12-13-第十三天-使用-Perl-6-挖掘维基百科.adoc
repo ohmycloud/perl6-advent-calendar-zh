@@ -1,0 +1,601 @@
+== 第十三天 - 使用 Perl 6 挖掘维基百科
+
+=== 介绍
+
+大家好!
+
+今天，让我介绍一下如何用 Perl 6 挖掘维基百科的 Infobox。
+
+维基百科信息框在自然语言处理中扮演着非常重要的角色，并且有许多应用程序可以利用维基百科信息框：
+
+- 构建知识库（例如 DBpedia[0]）
+- 排名属性的重要性[1]
+- 问答[2]
+
+其中，我将重点讨论信息框提取问题，并演示如何使用 Grammars 和 Actions 解析信息框的复杂结构。
+
+=== Grammar 和 Actions 难学吗?
+
+不，他们不是！
+
+你只需要知道五件事情：
+
+- Grammar
+ - **token** 是最基础的一个。你通常使用它。
+ - **rule** 让空白符有意义。
+ - **regex** 让匹配引擎回溯。
+
+- Actions
+ - **make** 准备一个对象用于返回当 made calls on it。
+ - **made** 在它的调用者身上调用并返回准备好的对象。
+
+欲了解更多信息, 请查看: link:https://docs.perl6.org/language/grammars[https://docs.perl6.org/language/grammars]
+
+==== 什么是 Infobox?
+
+你有没有听过 "Infobox" 这个词?
+
+对于那些没听说过的人，我会简单地解释一下。
+
+理解信息框的一个简单方法是使用一个真实的例子：
+
+!link:https://perl6advent.files.wordpress.com/2017/11/perl6infobox.png[img]
+
+你可以看到，信息框会在页面的右上方显示页面主题的属性-值对儿。例如, 在这个例子中, 它说 Perl 6 的设计者 (ja: 設計者)是 Larry Wall(ja: ラリー・ウォール)。
+
+欲了解更多信息, 请查看: link:https://en.wikipedia.org/wiki/Help:Infobox[https://en.wikipedia.org/wiki/Help:Infobox]
+
+==== 第一个例子: Perl 6
+
+首先要说的是，我将使用日文维基百科而不是英文维基百科演示解析技术。
+
+主要原因是解析日文维基百科是我的$ dayjob :)
+
+第二个原因是我想要展示 Perl 6 如何轻松地处理 Unicode 字符串。
+
+然后，让我们开始解析 link:https://ja.wikipedia.org/wiki/Perl_6[Perl 6 文章]中的信息框！
+
+用 wiki 标记写的文章的代码是：
+
+```
+{{Comp-stub}}
+
+{{Infobox プログラミング言語
+|名前             = Perl 6
+|ロゴ             = [[Image:Camelia.svg|250px]]
+|パラダイム       = [[マルチパラダイムプログラミング言語|マルチパラダイム]]
+|登場時期         = [[2015年]]12月25日
+|設計者           = [[ラリー・ウォール]]
+|最新リリース     = Rakudo Star 2016.04
+|型付け           = [[動的型付け]], [[静的型付け]]
+|処理系           = [[Rakudo]]
+|影響を受けた言語 = [[Perl|Perl 5]], [[Smalltalk]], [[Haskell]], [[Ruby]]
+|ライセンス       = [[Artistic License 2]]
+|ウェブサイト     = [https://perl6.org/ Perl6.org]
+}}
+{{プログラミング言語}}
+
+'''Perl 6'''（パールシックス）は、[[ラリー・ウォール]]により設計された[[オブジェクト指向]][[スクリプト言語]]である。
+
+Perl 6は、[[2000年]]に[[Perl]]の次期メジャーバージョンとして設計が始められ、[[2015年]]12月25日に公式のPerl 6正式安定版がリリースされた。しかし、言語仕様は現在のPerl (Perl 5)と互換性がなく、既存のPerl 5のソフトウェアをPerl 6用に「アップグレ
+ード」するのは極めて困難である。したがって現在はPerl 5とPerl 6は別の言語であると考えられており、Perl 6はPerl 5の次期バージョンではないとされている。換言すれば、Perl 6はPerl 5から移行対象とはみなされていない。
+```
+
+代码有三个有问题的部分：
+
+1. 信息框块后面有多余的元素，例如模板 `{{プログラミング言語}}` 和以 `'''Perl 6'''` 开头的主句。
+2. 我们必须区分三种类型的 token: 锚点文本（例如: `[[Rakudo]]`）, 原始文本（例如： `Rakudo Star 2016.04`）, 网站链接
+（例如： `[https://perl6.org/ Perl6.org]`）。
+3. 信息框不从文章的顶部位置开始。在这个例子中, `{{Comb-stub}}` 在文章的顶部。
+
+好的，接下来我将演示如何按照 Grammar，Actions，Caller（即调用 Grammar 和 Actions 的代码部分）的顺序来解决上述问题。
+
+==== Grammar
+
+解析信息框的 Grammar 代码如下:
+
+```perl6
+grammar Infobox::Grammar {
+    token TOP { <infobox> .+ } # (#1)
+    token infobox { '{{Infobox' <.ws> <name> \n <propertylist> '}}' }
+    token name { <-[\n]>+ }
+    token propertylist {
+        [
+            | <property> \n
+            | \n
+        ]+
+    }
+    token property {
+        '|' <key=.key-content> '=' <value=.value-content-list>
+    }
+
+    token key-content { <-[=\n]>+ }
+    token value-content-list {
+        <value-content>+
+    }
+    token value-content { # (#6)
+        [
+            | <anchortext>
+            | <weblink>
+            | <rawtext>
+            | <delimiter>
+        ]+
+    }
+    token anchortext { '[[' <-[\n]>+? ']]'        } # (#2)
+    token weblink    { '[' <-[\n]>+? ']'          } # (#3)
+    token rawtext    { <-[\|\[\]\n、\,\<\>\}\{]>+ } # (#4)
+    token delimiter  { [ '、' | ',' ]             } # (#5)
+}
+```
+
+- 问题 1 的答案:
+ - 使用 `.+` 来匹配多余的部分。(#1)
+- 问题 2 的答案:
+ - 准备 3 种类型的 tokens: 锚文本(#2), 网站链接(#2), 和原始文本(#4)。
+  - tokens 可能被分隔符（例如: `,`）分割, 所以准备分割符 token。(#5)
+ - 将 token 值-内容表示为四个 token 的任意长度序列（即，锚点文本，网站链接，原始文本，分隔符）。(#6)
+- 问题 3 的答案:
+ - 没有特别的事情要提及。
+
+==== Actions
+
+Actions 的代码如下:
+
+```perl6
+class Infobox::Actions {
+    method TOP($/) { make $<infobox>.made }
+    method infobox($/) {
+        make %( name => $<name>.made, propertylist => $<propertylist>.made )
+    }
+    method name($/) { make ~$/.trim }
+    method propertylist($/) {
+        make $<property>>>.made
+    }
+    method property($/) {
+        make $<key>.made => $<value>.made
+    }
+    method key-content($/) { make $/.trim }
+    method value-content-list($/) {
+        make $<value-content>>>.made
+    }
+    method value-content($/) { # (#1)
+        my $rawtext = $<rawtext>>>.made>>.trim.grep({ $_ ne "" });
+
+        make %(
+            anchortext => $<anchortext>>>.made,
+            weblink => $<weblink>>>.made,
+            rawtext => $rawtext.elems == 0 ?? $[] !! $rawtext.Array
+        );
+    }
+    method anchortext($/) {
+        make ~$/;
+    }
+    method weblink($/) {
+        make ~$/;
+    }
+    method rawtext($/) {
+        make ~$/;
+    }
+}
+```
+
+- 问题 2 的解决方法:
+ - 使 token value-content 由三个键组成：anchortext，weblink 和 rawtext。
+- 问题 1 和 3的解决方法:
+ - 没有特别的事情要提及。
+
+==== Caller
+
+Caller 部分的代码如下:
+
+```perl6
+my @lines = $*IN.lines;
+while @lines {
+    my $chunk = @lines.join("\n"); # (#1)
+    my $result = Infobox::Grammar.parse($chunk, actions => Infobox::Actions).made; # (#2)
+    if $result<name>:exists {
+        $result<name>.say;
+        for @($result<propertylist>) -> (:$key, :value($content-list)) { # (#3)
+            $key.say;
+            for @($content-list) -> $content {
+                $content.say;
+            }
+        }
+    }
+    shift @lines;
+}
+```
+
+
+- 问题 3 的解决方法:
+ - 逐行阅读文章并制作一个包含当前行和最后一行之间的行的块。 （＃1）
+ - 如果解析器确定：
+  - 该块不包含信息框，它返回一个未定义的值。接收未定义值的好方法之一是使用 `$` 符号。(#2)
+  - 该块包含信息框，它返回一个定义的值。使用 `@()` contextualizer 并迭代结果。(#3)
+- 问题 1 和 2 的解决方法：
+ - 没有特别的事情要提及。
+
+==== 运行解析器
+
+你准备好了吗？
+是时候运行第一个例子了！
+
+```perl6
+$ perl6 parser.p6 < perl6.txt
+プログラミング言語
+名前
+{anchortext => [], rawtext => [Perl 6], weblink => []}
+ロゴ
+{anchortext => [[[Image:Camelia.svg|250px]]], rawtext => [], weblink => []}
+パラダイム
+{anchortext => [[[マルチパラダイムプログラミング言語|マルチパラダイム]]], rawtext => [], weblink => []}
+登場時期
+{anchortext => [[[2015年]]], rawtext => [12月25日], weblink => []}
+設計者
+{anchortext => [[[ラリー・ウォール]]], rawtext => [], weblink => []}
+最新リリース
+{anchortext => [], rawtext => [Rakudo Star 2016.04], weblink => []}
+型付け
+{anchortext => [[[動的型付け]] [[静的型付け]]], rawtext => [], weblink => []}
+処理系
+{anchortext => [[[Rakudo]]], rawtext => [], weblink => []}
+影響を受けた言語
+{anchortext => [[[Perl|Perl 5]] [[Smalltalk]] [[Haskell]] [[Ruby]]], rawtext => [], weblink => []}
+ライセンス
+{anchortext => [[[Artistic License 2]]], rawtext => [], weblink => []}
+ウェブサイト
+{anchortext => [], rawtext => [], weblink => [[https://perl6.org/ Perl6.org]]}
+```
+
+我们看到的例子可能对您来说太简单了。让我们挑战更难的！
+
+==== 第二个例子: 阿尔伯特爱因斯坦
+
+作为第二个例子，我们来解析link:https://ja.wikipedia.org/wiki/%E3%82%A2%E3%83%AB%E3%83%99%E3%83%AB%E3%83%88%E3%83%BB%E3%82%A2%E3%82%A4%E3%83%B3%E3%82%B7%E3%83%A5%E3%82%BF%E3%82%A4%E3%83%B3[阿尔伯特爱因斯坦]的信息框。
+
+用 wiki 标记写的文章的代码是：
+
+```
+{{Infobox Scientist
+|name = アルベルト・アインシュタイン
+|image = Einstein1921 by F Schmutzer 2.jpg
+|caption = [[1921年]]、[[ウィーン]]での[[講義]]中
+|birth_date = {{生年月日と年齢|1879|3|14|no}}
+|birth_place = {{DEU1871}}<br>[[ヴュルテンベルク王国]][[ウルム]]
+|death_date = {{死亡年月日と没年齢|1879|3|14|1955|4|18}}
+|death_place = {{USA1912}}<br />[[ニュージャージー州]][[プリンストン (ニュージャージー州)|プリンストン]]
+|residence = {{DEU}}<br />{{ITA}}<br>{{CHE}}<br />{{AUT}}(現在の[[チェコ]])<br />{{BEL}}<br />{{USA}}
+|nationality = {{DEU1871}}、ヴュルテンベルク王国（1879-96）<br />[[無国籍]]（1896-1901）<br />{{CHE}}（1901-55）<br />{{AUT1867}}（1911-12）<br />{{DEU1871}}、{{DEU1919}}（1914-33）<br />{{USA1912}}（1940-55）
+| spouse      = [[ミレヴァ・マリッチ]]&nbsp;(1903-1919)<br />{{nowrap|{{仮リンク|エルザ・アインシュタイン|en|Elsa Einstein|label=エルザ・レーベンタール}}&nbsp;(1919-1936)}}
+| children    = [[リーゼル・アインシュタイン|リーゼル]] (1902-1903?)<br />[[ハンス・アルベルト・アインシュタイン|ハンス
+・アルベルト]] (1904-1973)<br />[[エドゥアルト・アインシュタイン|エドゥアルト]] (1910-1965)
+|field = [[物理学]]<br />[[哲学]]
+|work_institution = {{Plainlist|
+* [[スイス特許庁]] ([[ベルン]]) (1902-1909)
+* {{仮リンク|ベルン大学|en|University of Bern}} (1908-1909)
+* [[チューリッヒ大学]] (1909-1911)
+* [[プラハ・カレル大学]] (1911-1912)
+* [[チューリッヒ工科大学]] (1912-1914)
+* [[プロイセン科学アカデミー]] (1914-1933)
+* [[フンボルト大学ベルリン]] (1914-1917)
+* {{仮リンク|カイザー・ヴィルヘルム協会|en|Kaiser Wilhelm Society|label=カイザー・ヴィルヘルム研究所}} (化学・物理学研究所長, 1917-1933)
+* [[ドイツ物理学会]] (会長, 1916-1918)
+* [[ライデン大学]] (客員, 1920-)
+* [[プリンストン高等研究所]] (1933-1955)
+* [[カリフォルニア工科大学]] (客員, 1931-33)
+}}
+|alma_mater = [[チューリッヒ工科大学]]<br />[[チューリッヒ大学]]
+|doctoral_advisor = {{仮リンク|アルフレート・クライナー|en|Alfred Kleiner}}
+|academic_advisors = {{仮リンク|ハインリヒ・フリードリヒ・ウェーバー|en|Heinrich Friedrich Weber}}
+|doctoral_students =
+|known_for = {{Plainlist|
+*[[一般相対性理論]]
+*[[特殊相対性理論]]
+*[[光電効果]]
+*[[ブラウン運動]]
+*link:E=mc<sup>2</sup>[[E=mc2|質量とエネルギーの等価性]]
+*[[アインシュタイン方程式]]
+*[[ボース分布関数]]
+*[[宇宙定数]]
+*[[ボース＝アインシュタイン凝縮]]
+*[[EPRパラドックス]]
+*{{仮リンク|古典統一場論|en|Classical unified field theories}}
+}}
+| influenced  = {{Plainlist|
+* {{仮リンク|エルンスト・G・シュトラウス|en|Ernst G. Straus}}
+* [[ネイサン・ローゼン]]
+* [[レオ・シラード]]
+}}
+|prizes = {{Plainlist|
+*{{仮リンク|バーナード・メダル|en|Barnard Medal for Meritorious Service to Science}}(1920)
+*link:1921[[ノーベル物理学賞]]
+*link:1921[[マテウチ・メダル]]
+*link:1925[[コプリ・メダル]]
+*link:1926[[王立天文学会ゴールドメダル]]
+*link:1929[[マックス・プランク・メダル]]
+}}
+|religion =
+|signature = Albert Einstein signature 1934.svg
+|footnotes =
+}}
+{{thumbnail:begin}}
+{{thumbnail:ノーベル賞受賞者|1921年|ノーベル物理学賞|光電効果の法則の発見等}}
+{{thumbnail:end}}
+'''アルベルト・アインシュタイン'''<ref group="†">[[日本語]]における表記には、他に「アル{{Underline|バー}}ト・アインシュine|バー}}ト・アイン{{Underline|ス}}タイン」（[[英語]]の発音由来）がある。</ref>（{{lang-de-short|Albert Einstein}}<ref ɛrt ˈaɪnˌʃtaɪn}} '''ア'''ルベルト・'''ア'''インシュタイン、'''ア'''ルバート・'''ア'''インシュタイン</ref><ref group="†"taɪn}} '''ア'''ルバ（ー）ト・'''ア'''インスタイン、'''ア'''ルバ（ー）'''タ'''インスタイン</ref><ref>[http://dictionary.rein Einstein] (Dictionary.com)</ref><ref>[http://www.oxfordlearnersdictionaries.com/definition/english/albert-einstein?q=Albert+Einstein Albert Einstein] (Oxford Learner's Dictionaries)</ref>、[[1879年]][[3月14日]] - [[1955年]][[4月18日]]）ツ]]生まれの[[理論物理学者]]である。
+```
+
+正如你所看到的，这里有五个新问题：
+
+1. 一些模板
+ a. 包含换行符;并且
+ b. 是嵌套的(例如. `{{nowrap|{{仮リンク|...}}...}}`)
+
+2. 某些 attribute-value 对是空的。
+3. attribute-value 对的一些 value-sides
+ a. 包含中断标签;并且
+ b. 由不同类型的 token 组成（例如，anchortext 和 rawtext）。所以你需要添加位置信息来表示 tokens 之间的依赖关系。
+
+我将按照 Grammar，Actions 的顺序展示如何解决上述问题。
+
+Caller 的代码与前一个相同。
+
+==== Grammar
+
+Grammar 代码如下:
+
+```perl6
+grammar Infobox::Grammar {
+    token TOP { <infobox> .+ }
+    token infobox { '{{Infobox' <.ws> <name> \n <propertylist> '}}' }
+    token name { <-[\n]>+ }
+    token propertylist {
+        [
+            | <property> \n
+            | \n
+        ]+
+    }
+    token property {
+        [
+            | '|' <key=.key-content> '=' <value=.value-content-list>
+            | '|' <key=.key-content> '=' # (#4)
+        ]
+    }
+
+    token key-content { <-[=\n]>+ }
+    token value-content-list {
+        [
+            | <value-content> <br> # (#6)
+            | <value-content>
+            | <br>
+        ]+
+    }
+    token value-content-list-nl { # (#1)
+        [
+            | <value-content> <br> # (#7)
+            | <value-content>
+            | <br>
+        ]+ % \n
+    }
+    token value-content {
+        [
+            | <anchortext>
+            | <weblink>
+            | <rawtext>
+            | <template>
+            | <delimiter>
+            | <sup>
+        ]+
+    }
+    token br { # (#5)
+        [
+            | '<br />'
+            | '<br/>'
+            | '<br>'
+        ]
+    }
+    token template {
+        [
+            | '{{' <-[\n]>+? '}}'
+            | '{{nowrap' '|' <value-content-list> '}}' # (#3)
+            | '{{Plainlist' '|' \n <value-content-list-nl> \n '}}' # (#2)
+        ]
+    }
+    token anchortext { '[[' <-[\n]>+? ']]' }
+    token weblink { '[' <-[\n]>+? ']' }
+    token rawtext { <-[\|\[\]\n、\,\<\>\}\{]>+ }
+    token delimiter { [ '、' | ',' | '&nbsp;' ] }
+    token sup { '<sup>' <-[\n]>+? '</sup>'}
+}
+```
+
+- 问题 1.1 的解决方法：
+ - 创建 token *value-content-list-nl*，它是 value-content-list token 的换行符分隔版本。使用link:https://docs.perl6.org/language/regexes#Modified_quantifier:_%,_%%[修改量词] `％` 来表示这种序列是很有用的。 （＃1）
+ - 创建 token 模板。在这一个中，定义一个代表 link:https://en.wikipedia.org/wiki/Template:Plainlist[Plainlist 模板] 的序列。 （＃2）
+- 问题 1.2 的解决方法：
+ - 使 token 模板能够调用 token value-content-list。此修改触发递归调用并捕获嵌套结构，因为 token value-content-list 包含 token 模板。 （＃3）
+- 问题 2 的解决方法：
+ - 在 token *property* 中，定义一个 value-side 为空的序列（即以'='结尾的序列）。 （＃4）
+- 问题 3.1 的解决方法:
+ - 创建 token br（＃5）
+ - 让 token br 遵循两个 token 中的 token value-content：
+  - token value-content-list （＃6）
+  - token-content-list-nl（＃7）
+
+==== Actions
+
+Action 代码如下:
+
+```perl6
+class Infobox::Actions {
+    method TOP($/) { make $<infobox>.made }
+    method infobox($/) {
+        make %( name => $<name>.made, propertylist => $<propertylist>.made )
+    }
+    method name($/) { make $/.trim }
+    method propertylist($/) {
+        make $<property>>>.made
+    }
+    method property($/) {
+        make $<key>.made => $<value>.made
+    }
+    method key-content($/) { make $/.trim }
+    method value-content-list($/) {
+        make $<value-content>>>.made
+    }
+    method value-content($/) {
+        my $rawtext = $<rawtext>>>.made>>.trim.grep({ $_ ne "" });
+
+        make %(
+            anchortext => $<anchortext>>>.made,
+            weblink => $<weblink>>>.made,
+            rawtext => $rawtext.elems == 0 ?? $[] !! $rawtext.Array,
+            template => $<template>>>.made;
+        );
+    }
+    method template($/) {
+        make %(body => ~$/, from => $/.from, to => $/.to); # (#1)
+    }
+    method anchortext($/) {
+        make %(body => ~$/, from => $/.from, to => $/.to); # (#2)
+    }
+    method weblink($/) {
+        make %(body => ~$/, from => $/.from, to => $/.to); # (#3)
+    }
+    method rawtext($/) {
+        make %(body => ~$/, from => $/.from, to => $/.to); # (#4)
+    }
+}  
+```
+
+- 问题 3.2 的解决方法：
+ - 调用 make 时，分别使用 Match.from 和 Match.to 来获取匹配开始位置和匹配结束位置。 （＃1〜＃4）
+
+==== 运行解析器
+
+该跑了！
+
+```
+$ perl6 parser.p6 < einstein.txt
+Scientist
+name
+{anchortext => [], rawtext => [{body => アルベルト・アインシュタイン, from => 27, to => 42}], template => [], weblink => []}
+image
+{anchortext => [], rawtext => [{body => Einstein1921 by F Schmutzer 2.jpg, from => 51, to => 85}], template => [], weblink => []}
+caption
+{anchortext => [{body => [[1921年]], from => 97, to => 106} {body => [[ウィーン]], from => 107, to => 115} {body => [[講義]], from => 117, to => 123}], rawtext => [{body => , from => 96, to => 97} {body => での, from => 115, to => 117} {body => 中, from => 123, to => 124}], template => [], weblink => []}
+birth_date
+{anchortext => [], rawtext => [{body => , from => 138, to => 139}], template => [{body => {{生年月日と年齢|1879|3|14|no}}, from => 139, to => 163}], weblink => []}
+birth_place
+{anchortext => [], rawtext => [{body => , from => 178, to => 179}], template => [{body => {{DEU1871}}, from => 179, to => 190}], weblink => []}
+{anchortext => [{body => [[ヴュルテンベルク王国]], from => 194, to => 208} {body => [[ウルム]], from => 208, to => 215}], rawtext => [], template => [], weblink => []}
+death_date
+{anchortext => [], rawtext => [{body => , from => 229, to => 230}], template => [{body => {{死亡年月日と没年齢|1879|3|14|1955|4|18}}, from => 230, to => 263}], weblink => []}
+death_place
+{anchortext => [], rawtext => [{body => , from => 278, to => 279}], template => [{body => {{USA1912}}, from => 279, to => 290}], weblink => []}
+{anchortext => [{body => [[ニュージャージー州]], from => 296, to => 309} {body => [[プリンストン (ニュージャージー州)|プリンストン]], from => 309, to => 338}], rawtext => [], template => [], weblink => []}
+residence
+{anchortext => [], rawtext => [{body => , from => 351, to => 352}], template => [{body => {{DEU}}, from => 352, to => 359}], weblink => []}
+{anchortext => [], rawtext => [], template => [{body => {{ITA}}, from => 365, to => 372}], weblink => []}
+{anchortext => [], rawtext => [], template => [{body => {{CHE}}, from => 376, to => 383}], weblink => []}
+{anchortext => [{body => [[チェコ]], from => 400, to => 407}], rawtext => [{body => (現在の, from => 396, to => 400} {body => ), from => 407, to => 408}], template => [{body => {{AUT}}, from => 389, to => 396}], weblink => []}
+{anchortext => [], rawtext => [], template => [{body => {{BEL}}, from => 414, to => 421}], weblink => []}
+{anchortext => [], rawtext => [], template => [{body => {{USA}}, from => 427, to => 434}], weblink => []}
+nationality
+{anchortext => [], rawtext => [{body => , from => 449, to => 450} {body => ヴュルテンベルク王国（1879-96）, from => 462, to => 481}], template => [{body => {{DEU1871}}, from => 450, to => 461}], weblink => []}
+{anchortext => [{body => [[無国籍]], from => 487, to => 494}], rawtext => [{body => （1896-1901）, from => 494, to => 505}], template => [], weblink => []}
+{anchortext => [], rawtext => [{body => （1901-55）, from => 518, to => 527}], template => [{body => {{CHE}}, from => 511, to => 518}], weblink => []}
+{anchortext => [], rawtext => [{body => （1911-12）, from => 544, to => 553}], template => [{body => {{AUT1867}}, from => 533, to => 544}], weblink => []}
+{anchortext => [], rawtext => [{body => （1914-33）, from => 582, to => 591}], template => [{body => {{DEU1871}}, from => 559, to => 570} {body => {{DEU1919}}, from => 571, to => 582}], weblink => []}
+{anchortext => [], rawtext => [{body => （1940-55）, from => 608, to => 617}], template => [{body => {{USA1912}}, from => 597, to => 608}], weblink => []}
+spouse
+{anchortext => [{body => [[ミレヴァ・マリッチ]], from => 634, to => 647}], rawtext => [{body => , from => 633, to => 634} {body => (1903-1919), from => 653, to => 664}], template => [], weblink => []}
+{anchortext => [], rawtext => [], template => [{body => {{nowrap|{{仮リンク|エルザ・アインシュタイン|en|Elsa Einstein|label=エルザ・レーベンタール}}&nbsp;(1919-1936)}}, from => 670, to => 754}], weblink => []}
+children
+{anchortext => [{body => [[リーゼル・アインシュタイン|リーゼル]], from => 771, to => 793}], rawtext => [{body => , from => 770, to => 771} {body => (1902-1903?), from => 793, to => 806}], template => [], weblink => []}
+{anchortext => [{body => [[ハンス・アルベルト・アインシュタイン|ハンス・アルベルト]], from => 812, to => 844}], rawtext => [{body => (1904-1973), from => 844, to => 856}], template => [], weblink => []}
+{anchortext => [{body => [[エドゥアルト・アインシュタイン|エドゥアルト]], from => 862, to => 888}], rawtext => [{body => (1910-1965), from => 888, to => 900}], template => [], weblink => []}
+field
+{anchortext => [{body => [[物理学]], from => 910, to => 917}], rawtext => [{body => , from => 909, to => 910}], template => [], weblink => []}
+{anchortext => [{body => [[哲学]], from => 923, to => 929}], rawtext => [], template => [], weblink => []}
+work_institution
+{anchortext => [], rawtext => [{body => , from => 949, to => 950}], template => [{body => {{Plainlist|
+* [[スイス特許庁]] ([[ベルン]]) (1902-1909)
+* {{仮リンク|ベルン大学|en|University of Bern}} (1908-1909)
+* [[チューリッヒ大学]] (1909-1911)
+* [[プラハ・カレル大学]] (1911-1912)
+* [[チューリッヒ工科大学]] (1912-1914)
+* [[プロイセン科学アカデミー]] (1914-1933)
+* [[フンボルト大学ベルリン]] (1914-1917)
+* {{仮リンク|カイザー・ヴィルヘルム協会|en|Kaiser Wilhelm Society|label=カイザー・ヴィルヘルム研究所}} (化学・物理学研究所長, 1917-1933)
+* [[ドイツ物理学会]] (会長, 1916-1918)
+* [[ライデン大学]] (客員, 1920-)
+* [[プリンストン高等研究所]] (1933-1955)
+* [[カリフォルニア工科大学]] (客員, 1931-33)
+}}, from => 950, to => 1409}], weblink => []}
+alma_mater
+{anchortext => [{body => [[チューリッヒ工科大学]], from => 1424, to => 1438}], rawtext => [{body => , from => 1423, to => 1424}], template => [], weblink => []}
+{anchortext => [{body => [[チューリッヒ大学]], from => 1444, to => 1456}], rawtext => [], template => [], weblink => []}
+doctoral_advisor
+{anchortext => [], rawtext => [{body => , from => 1476, to => 1477}], template => [{body => {{仮リンク|アルフレート・ク
+ライナー|en|Alfred Kleiner}}, from => 1477, to => 1516}], weblink => []}
+academic_advisors
+{anchortext => [], rawtext => [{body => , from => 1537, to => 1538}], template => [{body => {{仮リンク|ハインリヒ・フリ
+ードリヒ・ウェーバー|en|Heinrich Friedrich Weber}}, from => 1538, to => 1593}], weblink => []}
+doctoral_students
+Nil
+known_for
+{anchortext => [], rawtext => [{body => , from => 1627, to => 1628}], template => [{body => {{Plainlist|
+*[[一般相対性理論]]
+*[[特殊相対性理論]]
+*[[光電効果]]
+*[[ブラウン運動]]
+*link:E=mc<sup>2</sup>[[E=mc2|質量とエネルギーの等価性]]
+*[[アインシュタイン方程式]]
+*[[ボース分布関数]]
+*[[宇宙定数]]
+*[[ボース＝アインシュタイン凝縮]]
+*[[EPRパラドックス]]
+*{{仮リンク|古典統一場論|en|Classical unified field theories}}
+}}, from => 1628, to => 1861}], weblink => []}
+influenced
+{anchortext => [], rawtext => [{body => , from => 1877, to => 1878}], template => [{body => {{Plainlist|
+* {{仮リンク|エルンスト・G・シュトラウス|en|Ernst G. Straus}}
+* [[ネイサン・ローゼン]]
+* [[レオ・シラード]]
+}}, from => 1878, to => 1968}], weblink => []}
+prizes
+{anchortext => [], rawtext => [{body => , from => 1978, to => 1979}], template => [{body => {{Plainlist|
+*{{仮リンク|バーナード・メダル|en|Barnard Medal for Meritorious Service to Science}}(1920)
+*link:1921[[ノーベル物理学賞]]
+*link:1921[[マテウチ・メダル]]
+*link:1925[[コプリ・メダル]]
+*link:1926[[王立天文学会ゴールドメダル]]
+*link:1929[[マックス・プランク・メダル]]
+}}, from => 1979, to => 2181}], weblink => []}
+religion
+Nil
+signature
+{anchortext => [], rawtext => [{body => Albert Einstein signature 1934.svg, from => 2206, to => 2241}], template => [], weblink => []}
+footnotes
+Nil
+```
+
+==== 结论
+
+我演示了信息框的解析技术。如果您有机会将 Wikipedia 用作 NLP 的资源，我强烈建议您创建自己的解析器。它不仅会加深你对 Perl 6 的理解而且还会加深关于维基百科知识的理解。
+
+再见！
+
+==== 引文
+
+[0] Lehmann，Jens 等人。 “DBpedia--一种从维基百科中提取的大型多语言知识库。”Semantic Web 6.2（2015）：167-195。
+
+[1]阿里，Esraa，Annalina Caputo 和 SéamusLawless。 “使用学习排序的实体属性排名”。
+
+[2]莫拉莱斯，阿尔瓦罗等人。 “学会回答维基百科信息框的问题。”2016年自然语言处理实证方法会议论文集。 2016年
+
+==== License
+
+所有来自维基百科的资料都是根据Creative Commons Attribution-ShareAlike 3.0 Unported License 授权使用的。
+
+- Itsuki丰田，日本的网页开发人员。

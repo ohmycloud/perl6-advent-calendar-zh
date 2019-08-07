@@ -1,0 +1,113 @@
+== link:https://perl6advent.wordpress.com/2017/12/20/day-20-advancements-in-macrotechnologies/[第二十天-宏的进阶]
+
+你好！
+
+请允许我，在出现日历的这一天，一个小切线。我不会直接谈论一个很酷的熟练的Perl 6特性。相反，我会打开一个小窗口，讨论可能会发生什么 - 希望在某些时候！
+
+如果你像我一样，在Rakudo上继续了几年的进步，你在版本中经常看到这一点：>一些不太有效的功能包括：>  - 高级宏
+
+那么，这究竟意味着什么？ Perl 6确实有宏，但它们目前的限制超出了人们通常想要做的。这并不是说它们目前是无用的，它们仍然是有用的，从前几年出现的其他帖子到OO :: Monitor使用宏来提前报告拼写错误。
+
+输入007. 007是“具有宏观许可的小型实验语言”。这是什么意思？！这是一种用于对宏进行调试和实验的语言，因此当他们被集成到Perl 6中时，他们的设计就已经准备好并经过战斗测试。
+
+那么，它有什么？ 007试图模仿Perl 6的“强大”部分，因此我们不会为完全不同的语言设计宏。这意味着阶段，中缀操作员，（MOP和正则表达式的要点）。
+
+它是什么样子的？ 007的核心就是喜欢Perl 6.然而，它的确存在一些问题。让我们来看看你想写的最重要的片段：FizzBu​​zz。注意：此博客帖子中的所有代码片段都是可执行的007代码，而不是Perl 6代码。
+
+```perl6
+my n = 1;
+while n <= 100 {
+    if n %% 15 {
+        say("FizzBuzz");
+    }
+    else if n %% 3 {
+        say("Fizz");
+    }
+    else if n %% 5 {
+        say("Buzz");
+    }
+    else {
+        say(n);
+    }
+    n = n + 1;
+}
+```
+
+什么？你不在乎吗？很明显，我确实答应过你的宏。我们将看看一个简单的宏“name”，它返回最后一个索引对象的名称。
+
+```perl6
+macro name(expr) {
+    if expr ~~ Q::Postfix::Property {
+        expr = expr.property;
+    }
+    if expr !~~ Q::Identifier {
+        throw new Exception {
+            message: "Cannot turn a " ~ type(expr) ~ " into a name"
+        };
+    }
+    return quasi { expr.name };
+}
+
+my info = {
+    foo: "Bond",
+    bar: {
+        baz: "James Bond"
+    },
+};
+
+say(name(info));           # info
+say(name(info.foo));       # foo
+say(name(info.bar.baz));   # baz
+```
+
+所以，你可能会在这里“WAT”。你是对的 - 这个要点缺少一些解释。宏的一个最重要的功能是访问AST（抽象语法树）。宏需要能够混淆代码的结构（如Lisp），而不是代码文本（如C）。 Q ::类型是代表程序形状的标准化类型。他们并不特别需要表示编译器/解释器如何考虑代码，但他们需要保持稳定，因为我们正在编写我们的代码 - 我们的宏 - 针对这种内省API。
+
+在这个代码示例中，我们使用了两种Q类型：表示点访问的Q :: Postfix :: Property和表示标识符的Q :: Identifier。首先，我们检查我们是否有财产。如果是这种情况，我们提取点右侧的内容（记住，a.b.c是（a.b）.c）。然后我们检查我们是否结束了一个标识符（而不是一个数字），并打印出来。这是例如我们如何才能实现C＃的操作符名称，而不必为语言添加任何内容！
+
+几天前，masak ++发布了一篇名为“三年过去”的博客文章，标志着007的第三个生日。虽然有些地区仍然非常粗糙，但它看起来越来越像一种可用的语言，日复一日。
+
+接下来我们要看的是正在解析的实现。下面是它的外观：（这个例子适用于PR，但是现在使用特殊外壳）：
+
+```perl6
+macro statement:() is parsed(/"whoa!"/) {
+    return quasi @ Q::Statement {
+        say("whoa!");
+    }
+};
+
+whoa!;
+```
+
+这也可能是我们希望他们在Perl 6中看起来......或者不是？讨论仍在进行中！鼓励你加入自行车......讨论:-)。这种语言还很年轻，需要大量的丰富功能，以及它的高级功能和简单功能。
+
+在我向你提供大量的元乐趣之前，这里是007想要达到目前坐落在分支中的一个里程碑：实现infix：<ff>作为库的一部分（如果你不确定，Perl 6文档如果在这里适用），而不是语言的一部分。代码在这里！
+
+```perl6
+# our infix macro takes a lhs (left hand side) and a rhs (right hand side).
+macro infix:<ff>(lhs, rhs) is tighter(infix:<=>) {
+    my active = False; # our current value when starting
+    return quasi {
+        if {{{lhs}}} {
+            active = True; # if the bit on the left is true, we switch to active mode
+        }
+        my result = active; # the result we are returning
+        if {{{rhs}}} {
+            active = False; # if the bit on the right is true, we switch to inactive mode
+        }
+        result; # return the result stored *before* the rhs ran.
+    };
+}
+
+my values = ["A", "B", "A", "B", "A"];
+for values -> v {
+    if v == "B" ff v == "B" {
+        say(v);
+    }
+    else {
+        say("x");
+    }
+}
+```
+
+这就是今天！如果您需要更多，请随时查看教程或示例文件夹。如果你想了解意愿，我们也有路线图。
+
