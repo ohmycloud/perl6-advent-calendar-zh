@@ -2,17 +2,17 @@
 
 这是另一个版本的 link:https://github.com/nige123/jmp.nigelhamilton.com[jmp] 供你在圣诞节前解开。
 
-**jmp** 是一个命令行工具，用于搜索成堆的代码，然后快速跳转到 `$EDITOR`。这有助于link:https://perl6advent.wordpress.com/2015/12/20/perl-6-christmas-have-an-appropriate-amount-of-fun/[保持流动]。
+**jmp** 是一个命令行工具，用于搜索成堆的代码，然后快速跳转到 `$EDITOR`。这有助于link:https://rakuadvent.wordpress.com/2015/12/20/perl-6-christmas-have-an-appropriate-amount-of-fun/[保持流动]。
 
-然而，计算机编程具有许多潜在的link:https://perl6advent.wordpress.com/2016/12/19/fixing-flow/[流阻塞器]。要在编码时保持流状态，通常需要在其他情况下快速**跳转**(jmp)到一行代码：修复错误，运行测试，检查日志文件，检查git状态等. **jmp** 也可以帮助加速这些任务吗？
+然而，计算机编程具有许多潜在的link:https://rakuadvent.wordpress.com/2016/12/19/fixing-flow/[流阻塞器]。要在编码时保持流状态，通常需要在其他情况下快速**跳转**(jmp)到一行代码：修复错误，运行测试，检查日志文件，检查git状态等. **jmp** 也可以帮助加速这些任务吗？
 
 幸运的是，重构 **jmp** 以容纳这些额外的使用场景相对容易。最新版本的 **jmp** 现在的工作原理如下：
 
-!link:https://perl6advent.files.wordpress.com/2018/12/demo.gif?w=600&zoom=2[img]
+!link:https://rakuadvent.files.wordpress.com/2018/12/demo.gif?w=600&zoom=2[img]
 
 在命令前加上 **jmp** 将导致命令再次执行，并且其输出会被吞噬并被分页。
 
-```perl6
+```raku
 #| find matching lines
 method find-files-in-command-output ($command) {
  
@@ -35,7 +35,7 @@ method find-files-in-command-output ($command) {
 
 速度对命令行工具很重要。**jmp** 只在用户选择编辑特定行时查找文件名, 而不是提前扫描每一行的文件名。这是懒惰地解析查找文件的行的代码：
 
-```perl6
+```raku
 submethod find-file-path {
  
     given self.context {
@@ -45,12 +45,12 @@ submethod find-file-path {
             proceed unless self.found-file-path($/[0], $/[1]);
         }
  
-        # matches Perl 6 error output (e.g., at SomePerl6.p6:12)
+        # matches Raku error output (e.g., at SomeRaku.p6:12)
         when /at \s (<-[\s:]>+) ':' (\d+)/ {
             proceed unless self.found-file-path($/[0], $/[1]);
         }
  
-        # matches Perl 6 error output (e.g., SomePerl6.p6 (Some::Perl6):12)
+        # matches Raku error output (e.g., SomeRaku.p6 (Some::Raku):12)
         when /at \s (<-[\s:]>+) '(' \S+ ')' ':' (\d+)/ {
             proceed unless self.found-file-path($/[0], $/[1]);
         }
@@ -68,7 +68,7 @@ submethod find-file-path {
 }
 ```
 
-**when** 块匹配不同类型的错误格式（例如，Perl 5 和 Perl 6）以提取文件名和行号。 **proceed** 语句对于移动到下一个 **when** 块非常有用。
+**when** 块匹配不同类型的错误格式（例如，Perl 5 和 Raku）以提取文件名和行号。 **proceed** 语句对于移动到下一个 **when** 块非常有用。
 
 这意味着你可以跳转(**jmp**)到工作流程中出现错误的任何位置：例如命令行的输出，测试输出，日志文件等。
 
@@ -78,7 +78,7 @@ submethod find-file-path {
 shell> zef upgrade jmp
 ```
 
-要首次安装 **jmp**，请link:https://perl6.org/downloads/[安装 Perl 6]，然后使用 link:https://github.com/ugexe/zef[zef] Perl 6 模块管理器来安装它：
+要首次安装 **jmp**，请link:https://raku.org/downloads/[安装 Raku]，然后使用 link:https://github.com/ugexe/zef[zef] Raku 模块管理器来安装它：
 
 ```shell
 shell> zef install jmp   # install the jmp command line tool

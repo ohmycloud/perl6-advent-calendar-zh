@@ -16,7 +16,7 @@
 
 在今天的降临日历中，我们将探索您可能称之为最简单的自动机。我们将字段串起来像字符串上的珠子，我们将尝试一个或两个和一些不同的状态集。
 
-为了让家里的人感兴趣，我将为您提供链接，让您在浏览器中运行示例代码，或在家中使用您的本地perl6编译器！
+为了让家里的人感兴趣，我将为您提供链接，让您在浏览器中运行示例代码，或在家中使用您的本地raku编译器！
 
 === 为学习而做
 
@@ -26,7 +26,7 @@
 
 在确定每个单元可以具有哪些状态之后，我们将知道什么存储适合于我们的世界。使用8位整数数组将允许我们从任何不超过255个单独状态的状态集中进行选择。不过，让我们现在共计3个州。我们可以随心所欲地初始化世界，但是将每个字段设置为随机有效状态是一个很好的起点。另一个是将一个状态的单个单元放在中间，并使每个其他单元具有不同的状态。
 
-```perl6
+```raku
 constant number-of-states = 3;
 constant field-width = 60;
 
@@ -39,7 +39,7 @@ sub init-field {
 
 显示字段非常简单，具体取决于我们使用的输出。 这是一段可以在任何控制台中运行的代码，下面是一个6pad的链接，它在pad的HTML部分输出很少的彩色方块。
 
-```perl6
+```raku
 sub output-a-row {
 
     for @field {
@@ -55,7 +55,7 @@ init-field;
 output-a-row;
 ```
 
-在link:https://perl6.github.io/6pad/#baa305eff795ed1f7a1957b83a9d4b26[浏览器]中运行此代码。 你将不得不等待几秒钟来获得当前相当大的perl6编译器在javascript中。
+在link:https://raku.github.io/6pad/#baa305eff795ed1f7a1957b83a9d4b26[浏览器]中运行此代码。 你将不得不等待几秒钟来获得当前相当大的raku编译器在javascript中。
 
 === 走在前面
 
@@ -65,7 +65,7 @@ output-a-row;
 
 对此的直接方法是在每个步骤之后有一个额外的字段来放置计算结果并将结果复制到“真实”字段数组中。 让我们尝试一下。
 
-```perl6
+```raku
 sub simulate-step {
     my int8 @output;
 
@@ -79,7 +79,7 @@ sub simulate-step {
 
 让我们看看我们需要什么来进行计算：新状态将取决于邻域和单元本身。 我们可能会选择最明显的社区：一个小区，它是该领域的前身和继承者。 但等等，第一个和最后一个细胞会发生什么？ 让我们假装他们有一个额外的邻居，它总是处于0状态。这样
 
-```perl6
+```raku
 sub simulate-step {
     my int8 @output;
   
@@ -122,13 +122,13 @@ sub simulate-step {
 
 这样做真的很愉快！
 
-```perl6
+```raku
 my int8 @lookup-table = (^number-of-states).roll(3³);
 ```
 
 并且给定 `$left`，`$middle` 和 `$right` 变量，我们可以将第一个与9相乘，第二个与3相乘，并将三者相加以获得查询表中的索引：
 
-```perl6
+```raku
 sub simulate-step {
     my int8 @output;
   
@@ -148,7 +148,7 @@ sub simulate-step {
 
 运行这个已经让我们看起来很闪亮。 我们需要做的就是连接潜艇：
 
-```perl6
+```raku
 constant number-of-states = 3;
 constant field-width = 60;
 
@@ -196,15 +196,15 @@ for ^100 {
 
 结果在某些时候看起来非常有趣！ 当然，我们需要通过随机查找表获得幸运。 如果你有很多无趣的东西，我喜欢这里的一个：
 
-```perl6
+```raku
 my int8 @lookup-table = <0 0 2 0 0 0 1 2 0 0 1 1 2 1 1 2 1 1 1 0 1 2 2 0 2 1 1>;
 ```
 
-这里是link:https://perl6.github.io/6pad/#cb1856d301959e3d3dca95925eab2bee[6pad]的链接，您可以在浏览器中试用它。
+这里是link:https://raku.github.io/6pad/#cb1856d301959e3d3dca95925eab2bee[6pad]的链接，您可以在浏览器中试用它。
 
-第三，这是我的机器的截图，以防您在移动设备上阅读或其他无法运行perl6的内容。
+第三，这是我的机器的截图，以防您在移动设备上阅读或其他无法运行raku的内容。
 
-!link:https://perl6advent.files.wordpress.com/2018/12/fish-tmp_112.png[img]
+!link:https://rakuadvent.files.wordpress.com/2018/12/fish-tmp_112.png[img]
 
 === 改变
 
@@ -212,7 +212,7 @@ my int8 @lookup-table = <0 0 2 0 0 0 1 2 0 0 1 1 2 1 1 2 1 1 1 0 1 2 2 0 2 1 1>;
 
 首先，让我们看看增加不同状态数量需要做些什么：
 
-```perl6
+```raku
 constant number-of-states = 4;
 
 # the size of the lookup table should be based on the number of states
@@ -231,7 +231,7 @@ sub output-a-row {
 
 并且计算也需要基于状态数进行计算：
 
-```perl6
+```raku
 my $index = $left * number-of-states * number-of-states
             + $middle * number-of-states
             + $right;
@@ -245,7 +245,7 @@ my $index = $left * number-of-states * number-of-states
 
 让我们回到3个状态而不是4个状态，用一个只有一个单元格的单元替换邻域：我们将采用单元格的前任及其后继者，但忽略单元格本身。 然后我们添加了前任的前任和后继者的继任者：
 
-```perl6
+```raku
 # three states, but four neighbors
 constant number-of-states = 3;
 constant number-of-neighbors = 4;
@@ -279,9 +279,9 @@ sub simulate-step {
 }
 ```
 
-!link:https://perl6advent.files.wordpress.com/2018/12/fish-tmp_113.png[img]
+!link:https://rakuadvent.files.wordpress.com/2018/12/fish-tmp_113.png[img]
 
-这是试用它的 link:https://perl6.github.io/6pad/#98c06c9c9aafaf36c9c4fbf320d9c9cc[6pad]
+这是试用它的 link:https://raku.github.io/6pad/#98c06c9c9aafaf36c9c4fbf320d9c9cc[6pad]
 
 可悲的是，它似乎只是让输出变得更加混乱。
 
@@ -289,7 +289,7 @@ sub simulate-step {
 
 目前，代码是高性能和可读性之间的折衷。 它也可能看起来像这样：
 
-```perl6
+```raku
 for (0, |@field, 0).rotor(3 => -2) -> ($left, $middle, $right) {
     my $index = :3[$right, $middle, $left];
 }
@@ -303,7 +303,7 @@ for (0, |@field, 0).rotor(3 => -2) -> ($left, $middle, $right) {
 
 那么我们怎样才能做得更好呢？ 我想到的第一件事是让变量 `$left`，`$middle` 和 `$right` 在迭代之间保持不变并通过以下方式移动单元格值：
 
-```perl6
+```raku
 my $left   = 0;
 my $middle = @field[0];
 my $right  = @field[1];
@@ -322,7 +322,7 @@ for ^field-width -> $x {
 
 很酷，我们甚至已经摆脱了 `$x` vs field-width的检查！ 但是还有另一件事情一遍又一遍地发生，我们可以做一点点简单。 我们可以让 `$left`，`$middle` 和 `$right` 变量已经保存了添加所需的确切值：
 
-```perl6
+```raku
 my $left   = 0;
 my $middle = @field[0] * 3;
 my $right  = @field[1];
@@ -343,7 +343,7 @@ for ^field-width -> $x {
 
 我遇到的一种细胞自动机是每个细胞都有机会在每一步上进行计算的细胞自动机，否则只需保持其状态一步。 让我们看看它是如何实现的：
 
-```perl6
+```raku
 constant probability = 0.75e0;
 
 my $left   = 0;
@@ -369,7 +369,7 @@ for ^field-width -> $x {
 
 这是给你的截图！
 
-!link:https://perl6advent.files.wordpress.com/2018/12/fish-tmp_114.png[img]
+!link:https://rakuadvent.files.wordpress.com/2018/12/fish-tmp_114.png[img]
 
 === 这有用吗？
 

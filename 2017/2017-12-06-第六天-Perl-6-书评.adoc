@@ -1,4 +1,0 @@
-== 第六天-Perl 6 书籍
-
-https://perl6advent.wordpress.com/2017/12/06/
-

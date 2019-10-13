@@ -1,12 +1,12 @@
-== link:https://perl6advent.wordpress.com/2017/12/22/day-22-features-of-perl-6-d/[第二十二天-Perl 6.d 的特性]
+== link:https://rakuadvent.wordpress.com/2017/12/22/day-22-features-of-perl-6-d/[第二十二天-Raku.d 的特性]
 
-所以我们就是这样。 Rakudo Perl 6第一次正式发布两年后，或者更准确的说是6.c。自从马特奥茨从那时起就开始关注性能的提升之后，圣诞老人认为要对此进行对比，描述自那时起实施的6.d的新功能。因为有很多，圣诞老人不得不做出选择。
+所以我们就是这样。 Rakudo Raku第一次正式发布两年后，或者更准确的说是6.c。自从马特奥茨从那时起就开始关注性能的提升之后，圣诞老人认为要对此进行对比，描述自那时起实施的6.d的新功能。因为有很多，圣诞老人不得不做出选择。
 
 === 在创建时调整对象
 
 您创建的任何课程现在都可以使用TWEAK方法。在新的类的新实例的所有其他初始化完成之前，这个方法将被调用。一个简单的，有点人为的例子，其中一个类A有一个属性，默认值是42，但如果在创建对象时指定了默认值，它应该更改该值：
 
-```perl6
+```raku
 class A {
     has $.value = 42;
     method TWEAK(:$value = 0) { # default prevents warning
@@ -26,11 +26,11 @@ dd A.new(value => 42); # A.new(value => 666)
 
 === 并发性改进
 
-Rakudo Perl 6的并发功能在引擎盖下看到了许多改进。其中一些暴露为新功能。最显着的是Lock :: Async（一个返回Promise的非阻塞锁）和原子操作符。
+Rakudo Raku的并发功能在引擎盖下看到了许多改进。其中一些暴露为新功能。最显着的是Lock :: Async（一个返回Promise的非阻塞锁）和原子操作符。
 
-在大多数情况下，您不需要直接使用它们，但是如果您正在编写使用并发功能的程序，那么您可能知道原子操作符。经常发生的逻辑错误，特别是如果你在Pumpking Perl 5中使用线程，是因为在Rakudo Perl 6中没有对共享变量的隐式锁定。例如：
+在大多数情况下，您不需要直接使用它们，但是如果您正在编写使用并发功能的程序，那么您可能知道原子操作符。经常发生的逻辑错误，特别是如果你在Pumpking Perl 5中使用线程，是因为在Rakudo Raku中没有对共享变量的隐式锁定。例如：
 
-```perl6
+```raku
 my int $a;
     await (^5).map: {
         start { ++$a for ^100000 }
@@ -40,7 +40,7 @@ my int $a;
 
 那么为什么没有显示500000？原因是我们有5个线程同时递增相同的变量。由于增量由读步骤，增量步骤和写步骤组成，因此一个线程与另一个线程同时执行读取步骤变得非常容易。因此失去了一个增量。在我们有原子操作符之前，做上述代码的正确方法是：
 
-```perl6
+```raku
    my int $a;
     my $l = Lock.new;
     await (^5).map: {
@@ -57,7 +57,7 @@ my int $a;
 
 现在我们有了原子变量，上面的代码就变成了：
 
-```perl6
+```raku
    my atomicint $a;
     await (^5).map: {
         start { ++⚛$a for ^100000 }
@@ -73,20 +73,20 @@ my int $a;
 
 您现在还可以通过指定字形的Unicode名称来创建字形，例如：
 
-```perl6
+```raku
 say "BUTTERFLY".parse-names; # 🦋
 ```
 
 或者在运行时创建Unicode名称字符串：
 
-```perl6
+```raku
 my $t = "THUMBS UP SIGN, EMOJI MODIFIER FITZPATRICK TYPE";
 print "$t-$_".parse-names for 3..6; # 👍🏼👍🏽👍🏾👍🏿
 ```
 
 或者整理而不是仅仅排序：
 
-```perl6
+```raku
 # sort by codepoint value
 say <ä a o ö>.sort; # (a o ä ö)
 # sort using Unicode Collation Algorithm
@@ -95,14 +95,14 @@ say <ä a o ö>.collate; # (a ä o ö)
 
 或者使用unicmp而不是cmp：
 
-```perl6
+```raku
 say "a" cmp "Z"; # More
 say "a" unicmp "Z"; # Less
 ```
 
 或者您现在可以使用任何Unicode数字匹配变量（$ 1为$ 1），负数（-1为-1）和基数基数（：3（“22”）为3（“22”））。
 
-圣诞老人认为Rakudo Perl 6拥有世界上任何编程语言的最佳Unicode支持！
+圣诞老人认为Rakudo Raku拥有世界上任何编程语言的最佳Unicode支持！
 
 === 跳过值
 
@@ -114,13 +114,13 @@ say "a" unicmp "Z"; # Less
 
 使用.skip查找第1000个素数的示例：
 
-```perl6
+```raku
 say (^Inf).grep(*.is-prime)[999]; # 7919
 ```
 
 与
 
-```perl6
+```raku
 say (^Inf).grep(*.is-prime).skip(999).head; # 7919
 ```
 
@@ -130,7 +130,7 @@ say (^Inf).grep(*.is-prime).skip(999).head; # 7919
 
 Buf变得更像一个Array，因为它现在支持.push，.append，.pop，.unshift，.prepend，.shift和.splice。它也变得更像Str，增加了一个subbuf-rw（类似于.substr-rw），例如：
 
-```perl6
+```raku
 my $b = Buf.new(100..105);
 $b.subbuf-rw(2,3) = Blob.new(^5);
 say $b.perl; # Buf.new(100,101,0,1,2,3,4,105)
@@ -138,7 +138,7 @@ say $b.perl; # Buf.new(100,101,0,1,2,3,4,105)
 
 您现在也可以使用给定数量的元素和模式来分配Buf或Blob。或者用.reallocate改变Buf的大小：
 
-```perl6
+```raku
 my $b = Buf.allocate(10,(1,2,3));
 say $b.perl; # Buf.new(1,2,3,1,2,3,1,2,3,1)
 $b.reallocate(5);
@@ -155,7 +155,7 @@ Test.pm的计划子例程现在还采用可选的：skip-all参数来指示文�
 
 就好像这还不够，还有一个新的遥测模块，您需要在需要时加载，就像测试模块一样。遥测模块提供了许多可直接使用的基元，例如：
 
-```perl6
+```raku
 use Telemetry;
 say T<wallclock cpu max-rss>; # (138771 280670 82360)
 ```
@@ -164,7 +164,7 @@ say T<wallclock cpu max-rss>; # (138771 280670 82360)
 
 如果你想得到你的程序中发生的事情的报告，你可以使用管理单元，并在程序完成时显示报告。例如：
 
-```perl6
+```raku
 use Telemetry;
 snap;
 Nil for ^10000000;  # something that takes a bit of time
@@ -193,7 +193,7 @@ wallclock  Number of microseconds elapsed
 
 如果你想要每秒1次的程序状态，你可以使用snapper：
 
-```perl6
+```raku
 use Telemetry;
 snapper;
 Nil for ^10000000;  # something that takes a bit of time
@@ -233,15 +233,15 @@ wallclock  Number of microseconds elapsed
 您现在可以通过设置％* SUB-MAIN-OPTS中的选项来修改MAIN参数的处理方式。默认的USAGE消息现在可以在MAIN中作为$ * USAGE动态变量使用，所以如果你愿意，你可以改变它。
 
 
-=== 嵌入 Perl 6
+=== 嵌入 Raku
 
-两个新功能使嵌入Rakudo Perl 6更易于处理：
+两个新功能使嵌入Rakudo Raku更易于处理：
 现在可以设置＆* EXIT动态变量来指定调用exit（）时要执行的操作。
 
 将环境变量RAKUDO_EXCEPTIONS_HANDLER设置为“JSON”将引发JSON中的异常，而不是文本，例如：
 
-```perl6
-$ RAKUDO_EXCEPTIONS_HANDLER=JSON perl6 -e '42 = 666'
+```raku
+$ RAKUDO_EXCEPTIONS_HANDLER=JSON raku -e '42 = 666'
 {
   "X::Assignment::RO" : {
     "value" : 42,

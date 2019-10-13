@@ -1,4 +1,4 @@
-== link:https://perl6advent.wordpress.com/2017/12/18/perl6-powered-work-flow/[第十八天-Perl 6 支持的工作流]
+== link:https://rakuadvent.wordpress.com/2017/12/18/raku-powered-work-flow/[第十八天-Raku 支持的工作流]
 
 保持流畅的编码可能是一个挑战。分心和讨厌的句法错误是潜在的流量瓶颈。
 
@@ -12,15 +12,15 @@
 
 为了保持畅通，你有时需要快速回忆一些事情，记下将来要做的事情，并专注于现在的进步。保留一个123.do文件可以帮助您减轻编码时的认知负担。
 
-123.do文件的格式很简单，因此您可以直接使用文本编辑器对其进行破解，并使用此Perl 6语法进行描述。
+123.do文件的格式很简单，因此您可以直接使用文本编辑器对其进行破解，并使用此Raku语法进行描述。
 
-这是驱动它的Perl 6命令行模块。
+这是驱动它的Raku命令行模块。
 
-link:https://perl6advent.files.wordpress.com/2017/12/tty.gif?w=652&zoom=2[img]
+link:https://rakuadvent.files.wordpress.com/2017/12/tty.gif?w=652&zoom=2[img]
 
 安装它只需:
 
-```perl6
+```raku
 shell> zef install Do123
 shell> 123 +7 Merry Christmas
 shell> 123 +13 Happy New Year

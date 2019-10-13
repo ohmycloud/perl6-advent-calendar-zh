@@ -1,10 +1,10 @@
-== link:https://perl6advent.wordpress.com/2017/12/14/day-14-the-little-match-girl-building-and-testing-big-grammars-in-perl-6/[第十四天-在 Perl 6 中构建和测试 Big Grammars]
+== link:https://rakuadvent.wordpress.com/2017/12/14/day-14-the-little-match-girl-building-and-testing-big-grammars-in-perl-6/[第十四天-在 Raku 中构建和测试 Big Grammars]
 
-Perl 6 Grammars 很棒，但在项目中使用它们会是什么样呢？在圣诞节前和圣诞节后，我的经历是一个令人心酸的故事。你可以在link:https://github.com/albastev/Grammar-Modelica/tree/parse_modelica_library[这里]找到版本库。我不是来自计算机科学背景，所以也许它看起来很简陋，但是当我学习 Perl 6 Grammars 时，这是我的困难和胜利。
+Raku Grammars 很棒，但在项目中使用它们会是什么样呢？在圣诞节前和圣诞节后，我的经历是一个令人心酸的故事。你可以在link:https://github.com/albastev/Grammar-Modelica/tree/parse_modelica_library[这里]找到版本库。我不是来自计算机科学背景，所以也许它看起来很简陋，但是当我学习 Raku Grammars 时，这是我的困难和胜利。
 
 === 第一根火柴
 
-就像卖火柴的小女孩一样，我们的故事发生在圣诞节前。卖火柴的小女孩的任务是在圣诞节前夕销售一捆火柴棍（实际上是新年，我确实回去读了那个故事。圣诞节更适合 Perl 6），而我的任务是从 Modelica 模型中提取注释渲染为矢量图形。现在，Modelica 是一个非常棒的面向对象的建模语言，除了提及其附录中包含一个具体语法部分的非常好的link:https://www.modelica.org/documents/ModelicaSpec34.pdf[规范文档]（pdf）之外，我将完全理解它。仔细阅读本节，我意识到“语法元符号”和“词法单位”看起来像我最近读过的一篇博客文章中的 Perl 6 Grammars，并且急于尝试。
+就像卖火柴的小女孩一样，我们的故事发生在圣诞节前。卖火柴的小女孩的任务是在圣诞节前夕销售一捆火柴棍（实际上是新年，我确实回去读了那个故事。圣诞节更适合 Raku），而我的任务是从 Modelica 模型中提取注释渲染为矢量图形。现在，Modelica 是一个非常棒的面向对象的建模语言，除了提及其附录中包含一个具体语法部分的非常好的link:https://www.modelica.org/documents/ModelicaSpec34.pdf[规范文档]（pdf）之外，我将完全理解它。仔细阅读本节，我意识到“语法元符号”和“词法单位”看起来像我最近读过的一篇博客文章中的 Raku Grammars，并且急于尝试。
 
 来自 Modelica 的示例具体语法：
 
@@ -14,9 +14,9 @@ class-definition :
 class-specifier
 ```
 
-Perl 6 **rule** 的示例:
+Raku **rule** 的示例:
 
-```perl6
+```raku
 rule class_definition {
   [<|w>'encapsulated'<|w>]? 
   <class_prefixes>
@@ -26,7 +26,7 @@ rule class_definition {
 
 这就像卖火柴的小女孩划第一颗火柴一样，第一次看到了一个超越她现实的奇妙世界。一个温暖的小炉子。然后它熄灭了。
 
-它非常接近，我把它放到了一个文本编辑器中，并且用一些 Perl 6 的东西替换了不是 Perl 6 的部分，以查看它是否会运行。它没有运行。我砍掉了它，我指出了不同的位来解决更小的块。无处不在的空白符号，正则表达式，标记，规则。我能够解析某些部分，其他部分神秘地没有起效。回顾过去，这一定很糟糕。与此同时，我们一起破解传统的正则表达式来提取注释，并将我的 Grammar 放在架子上。
+它非常接近，我把它放到了一个文本编辑器中，并且用一些 Raku 的东西替换了不是 Raku 的部分，以查看它是否会运行。它没有运行。我砍掉了它，我指出了不同的位来解决更小的块。无处不在的空白符号，正则表达式，标记，规则。我能够解析某些部分，其他部分神秘地没有起效。回顾过去，这一定很糟糕。与此同时，我们一起破解传统的正则表达式来提取注释，并将我的 Grammar 放在架子上。
 
 === 第二根火柴
 
@@ -36,7 +36,7 @@ rule class_definition {
 
 === 第三根火柴
 
-时间流逝，圣诞节来了。我有了新的职位，有时间做个人项目。我有不断改进的 link:https://docs.perl6.org/language/grammars[Grammar 文档]来指导我。我已经阅读了使用遗留代码高效工作的书。这足以让我再次迎难而上。
+时间流逝，圣诞节来了。我有了新的职位，有时间做个人项目。我有不断改进的 link:https://docs.raku.org/language/grammars[Grammar 文档]来指导我。我已经阅读了使用遗留代码高效工作的书。这足以让我再次迎难而上。
 
 
 === 面向对象
@@ -65,7 +65,7 @@ lib
 
 Expressions.pm6中表达式的定义：
 
-```perl6
+```raku
 rule expression {
   [
   <|w>'if'<|w> <expression> <|w>'then'<|w> <expression> [
@@ -82,7 +82,7 @@ rule expression {
 
 从Expressions.t覆盖测试语法：
 
-```perl6
+```raku
 grammar TestExpression is Grammar::Modelica {
     rule TOP {^ <expression> $}
     rule simple_expression { 'simple_expression' }
@@ -99,7 +99,7 @@ ok TestExpression.parse('simple_expression');
 
 从ComponentClause.pm6：
 
-```perl6
+```raku
 rule type_prefix {
   [<|w>[ 'flow' || 'stream' ]<|w>]?
   [<|w>[ 'discrete' || 'parameter' || 'constant' ]<|w>]?
@@ -115,9 +115,9 @@ rule type_prefix {
 
 ==== 以开始结束
 
-另一个让我感到沮丧的是类定义语法。 Modelica使用形式some_identifier ...结束some_identifier的类。如何确保在开始和结束时使用相同的标识符对我来说很麻烦。幸运的是，Perl 6允许您在语法方法中使用捕获。下面的（<IDENT>）捕获将填充$ 0，然后可以用它来确保我们的long_class_specifier以适当的标识符结束。
+另一个让我感到沮丧的是类定义语法。 Modelica使用形式some_identifier ...结束some_identifier的类。如何确保在开始和结束时使用相同的标识符对我来说很麻烦。幸运的是，Raku允许您在语法方法中使用捕获。下面的（<IDENT>）捕获将填充$ 0，然后可以用它来确保我们的long_class_specifier以适当的标识符结束。
 
-```perl6
+```raku
 rule long_class_specifier {
   [(<IDENT>) <string_comment> <composition> <|w>'end'<|w> $0 ]
   ||
@@ -135,8 +135,8 @@ rule long_class_specifier {
 
 所以，最后小火柴女郎点燃了她捆绑的其余部分。然后，她死了。不要死，但可以同时点亮所有305场比赛，例如/ parseThemAll.p6：
 
-```perl6
-#!perl6
+```raku
+#!raku
 
 use v6;
 use Test;
@@ -161,7 +161,7 @@ sub MAIN($modelica-dir) {
     die "Can't find directory" if ! $modelica-dir.IO.d;
 
     # modified from the lovely docs at
-    # https://docs.perl6.org/routine/dir
+    # https://docs.raku.org/routine/dir
     my @stack = $modelica-dir.IO;
     my @files;
     while @stack {

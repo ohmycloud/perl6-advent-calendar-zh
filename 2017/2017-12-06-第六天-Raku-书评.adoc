@@ -1,0 +1,4 @@
+== 第六天-Raku 书籍
+
+https://rakuadvent.wordpress.com/2017/12/06/
+

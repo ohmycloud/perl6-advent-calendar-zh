@@ -15,7 +15,7 @@ Robin 2 Robin Street, Gotham Nice
 
 S.夫人用这样的 grammar 开头：
 
-```perl6
+```raku
 grammar naughty-nice-list {
     token TOP { <details>+ } # Find one or more records made up of name, address, assessment (defined below)
     
@@ -31,7 +31,7 @@ grammar naughty-nice-list {
 
 并在列表上调用它，如下所示：
 
-```perl6
+```raku
 naughty-nice-list.parsefile("./list.txt");
 ```
 
@@ -39,7 +39,7 @@ naughty-nice-list.parsefile("./list.txt");
 
 为此，她创建了一个 action 动作类：
 
-```perl6
+```raku
 class santa-list-actions {
     has %!filtered-lists; # Create a private hash for this class
 
@@ -59,7 +59,7 @@ class santa-list-actions {
 
 她这样使用:
 
-```perl6
+```raku
 my $actions = santa-list-actions.new;
 naughty-nice-list.parsefile("./list.txt", actions=>$actions); # As Mrs S. called the object 'actions', the same as the keyword, she could write :$actions instead of actions=>$actions
 my %hash-naughty-nice = $actions.show;
@@ -84,7 +84,7 @@ Victor Mancho 3 Mancho Street, New York City Malo
 
 所以，为了现在调用她的脚本，她创建了两个数组并将它们传递给 grammar：
 
-```perl6
+```raku
 my @nice = ['Nice', 'Bueno'];
 my @naughty = ['Naughty', 'Malo'];
 naughty-nice-list.parsefile("./list.txt", args=>(@nice, @naughty), actions=>$actions);
@@ -92,7 +92,7 @@ naughty-nice-list.parsefile("./list.txt", args=>(@nice, @naughty), actions=>$act
 
 她改变了这样的 grammar 来使用新的数组：
 
-```perl6
+```raku
 grammar naughty-nice-list {
     token TOP (@*nice-words, @*naughty-words) { <details>+ } # Create dynamic arrays with the passed in arrays, available throughout the grammar
     token details { <name> <address> <assessment> }
@@ -106,13 +106,13 @@ grammar naughty-nice-list {
 
 因此，她进行了另一项更改，为评估令牌命名语法中的潜在匹配：
 
-```perl6
+```raku
 token assessment { $<Naughty>=@*naughty-words|$<Nice>=@*nice-words \n } # Mrs S. has now added names to the potential matches
 ```
 
 在 action 动作类中，必须进行更改以适应这种情况。使用 `make` 和 `made`，圣诞老人将存储相应匹配的名称：
 
-```perl6
+```raku
 class santa-list-actions {
     has %!filtered-lists;
 
@@ -135,11 +135,11 @@ class santa-list-actions {
 
 一旦圣诞老人将数据捕获到她自己的哈希中，她就可以轻松地检查出今年已经被马洛的 Victor Mancho 将其列入正确的列表：
 
-```perl6
+```raku
 say %hash-naughty-nice<Naughty>[2][0]; # Produces the output 'Victor Mancho'
 ```
 
 所以现在，圣诞老人可以将 “Naughty” 或 “Nice” 的任何新翻译添加到相关数组，而不会触及 grammar。
 
-圣诞老人发现自己对 Perl 6 grammar 的灵活性非常满意。圣诞老人对这个问题的研究起初不那么重要......但是她知道她在确保每个人都能得到一个礼物或者在这个圣诞节的窗户上扔蛋的方法上做得很好。
+圣诞老人发现自己对 Raku grammar 的灵活性非常满意。圣诞老人对这个问题的研究起初不那么重要......但是她知道她在确保每个人都能得到一个礼物或者在这个圣诞节的窗户上扔蛋的方法上做得很好。
 

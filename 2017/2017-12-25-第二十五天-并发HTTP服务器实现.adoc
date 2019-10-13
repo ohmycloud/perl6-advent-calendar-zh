@@ -1,14 +1,14 @@
-== link:https://perl6advent.wordpress.com/2017/12/25/bonus-xmas-concurrent-http-server-implementation-and-the-scripters-approach/[第二十五天-圣诞奖金 - 并发HTTP服务器实施和scripter的方法]
+== link:https://rakuadvent.wordpress.com/2017/12/25/bonus-xmas-concurrent-http-server-implementation-and-the-scripters-approach/[第二十五天-圣诞奖金 - 并发HTTP服务器实施和scripter的方法]
 
-首先，我想强调 link:http://www.jnthn.net/[Jonathan Worthington] 在 link:http://rakudo.org/[Rakudo Perl6] 和 link:https://docs.perl6.org/type/IO::Socket::Async[IO::Socket::Async] 中的工作。谢谢 Jon！
+首先，我想强调 link:http://www.jnthn.net/[Jonathan Worthington] 在 link:http://rakudo.org/[Rakudo Raku] 和 link:https://docs.raku.org/type/IO::Socket::Async[IO::Socket::Async] 中的工作。谢谢 Jon！
 
 我喜欢制作脚本;编写组织良好的动作序列，**获得结果**并对它们进行**处理**。
 
-当我从 Perl6 开始时，我发现了一个壮观的生态系统，我可以**按照自己喜欢的方式**实践我的想法：**脚本方式**。其中一个想法是实现一个小型的 HTTP 服务器来玩玩。查看与 **Perl6**，HTTP 和套接字相关的其他项目和模块，我发现背后的作者是具有**面向对象**编程经验的程序员。
+当我从 Raku 开始时，我发现了一个壮观的生态系统，我可以**按照自己喜欢的方式**实践我的想法：**脚本方式**。其中一个想法是实现一个小型的 HTTP 服务器来玩玩。查看与 **Raku**，HTTP 和套接字相关的其他项目和模块，我发现背后的作者是具有**面向对象**编程经验的程序员。
 
-=== Perl6 范式
+=== Raku 范式
 
-Perl6 支持三种最流行的编程范式:
+Raku 支持三种最流行的编程范式:
 
 - 面向对象
 - 函数式
@@ -18,17 +18,17 @@ Perl6 支持三种最流行的编程范式:
 
 **函数式**范式在我看来非常棒;你可以使用一个函数，并像 var 一样使用它，以及其他令人惊讶的事情。
 
-=== Perl6 Supplies 就像一个 V12 引擎
+=== Raku Supplies 就像一个 V12 引擎
 
-在我开始将 link:http://perl6intro.com/[perl6intro.com] 翻译成link:http://es.perl6intro.com/[西班牙语]后不久，我开始使用 Perl6。看看 **Perl6** 的文档，我发现了 **Perl6** 巨大的**并发**潜力。 Perl6在link:https://docs.perl6.org/language/concurrency[并发方面]比我想象的更加强大。
+在我开始将 link:http://rakuintro.com/[rakuintro.com] 翻译成link:http://es.rakuintro.com/[西班牙语]后不久，我开始使用 Raku。看看 **Raku** 的文档，我发现了 **Raku** 巨大的**并发**潜力。 Raku在link:https://docs.raku.org/language/concurrency[并发方面]比我想象的更加强大。
 
-我使用 **Perl6** 的 HTTP 服务器的思想始于 link:https://docs.perl6.org/type/Supply[Perl6 Supplies]（具有多个订阅者的异步数据流），具体来说就是 link:https://docs.perl6.org/type/IO::Socket::Async[IO::Socket::Async]类。所有的套接字管理，数据传输和并发性实际上都是**自动**且易于理解的。制作并玩一玩小并发但强大的服务是极好的。
+我使用 **Raku** 的 HTTP 服务器的思想始于 link:https://docs.raku.org/type/Supply[Raku Supplies]（具有多个订阅者的异步数据流），具体来说就是 link:https://docs.raku.org/type/IO::Socket::Async[IO::Socket::Async]类。所有的套接字管理，数据传输和并发性实际上都是**自动**且易于理解的。制作并玩一玩小并发但强大的服务是极好的。
 
-基于 link:https://docs.perl6.org/type/IO::Socket::Async[IO::Socket::Async] 文档的示例，我开始在 link:https://github.com/ramiroencinas/mini-http-cgi-server[mini-http-cgi-server] 项目中实现一个支持 pseudoCGI 的小型 HTTP 服务器，并且按照我的预期工作。当我得到我想要的东西时，我很满意，我离开了这个项目一段时间。我不喜欢事情发展太多。
+基于 link:https://docs.raku.org/type/IO::Socket::Async[IO::Socket::Async] 文档的示例，我开始在 link:https://github.com/ramiroencinas/mini-http-cgi-server[mini-http-cgi-server] 项目中实现一个支持 pseudoCGI 的小型 HTTP 服务器，并且按照我的预期工作。当我得到我想要的东西时，我很满意，我离开了这个项目一段时间。我不喜欢事情发展太多。
 
-但之后，为马德里 link:http://madrid.pm.org/workshop[Perl Workshop 2017] 做了一次演讲（感谢link:http://madrid.pm.org/[马德里 Perl Mongers] 和 link:http://barcelona.pm/[巴塞罗那 Perl Mongers] 团队为这次活动提供的支持），我有足够的动力去做**更实际的**事情，让网络**前端**编码人员可以完成他们的工作并且与 **Perl6正在等待的后端**进行交流。一方面是典型的**公共 html 静态结构**，另一方面是一个包含多个 web 服务的 **Perl6** 模块，用于等待来自前端人员的 web 请求。
+但之后，为马德里 link:http://madrid.pm.org/workshop[Perl Workshop 2017] 做了一次演讲（感谢link:http://madrid.pm.org/[马德里 Perl Mongers] 和 link:http://barcelona.pm/[巴塞罗那 Perl Mongers] 团队为这次活动提供的支持），我有足够的动力去做**更实际的**事情，让网络**前端**编码人员可以完成他们的工作并且与 **Raku正在等待的后端**进行交流。一方面是典型的**公共 html 静态结构**，另一方面是一个包含多个 web 服务的 **Raku** 模块，用于等待来自前端人员的 web 请求。
 
-然后 link:https://github.com/ramiroencinas/wap6[Wap6] 诞生了（Web App Perl6）。
+然后 link:https://github.com/ramiroencinas/wap6[Wap6] 诞生了（Web App Raku）。
 
 
 === Wap6 的结构
@@ -38,11 +38,11 @@ Perl6 支持三种最流行的编程范式:
 - public
 - webservices
 
-**公共**文件夹包含友好的前端东西，比如静态 html，javascript，css 等，也就是**前端**开发者空间。 **webservices** 文件夹包含**后端**的东西：一个 **Perl6** 模块，包括每个 webservice 的一个函数。
+**公共**文件夹包含友好的前端东西，比如静态 html，javascript，css 等，也就是**前端**开发者空间。 **webservices** 文件夹包含**后端**的东西：一个 **Raku** 模块，包括每个 webservice 的一个函数。
 
-相同的文件夹级别包含解决方案入口点，一个 **Perl6** 脚本，其中包括初始化服务器参数，其中包含路由和 webservices 之间的映射：
+相同的文件夹级别包含解决方案入口点，一个 **Raku** 脚本，其中包括初始化服务器参数，其中包含路由和 webservices 之间的映射：
 
-```perl6
+```raku
 my %webservices =
   '/ws1' => ( &ws1, 'html' ),
   '/ws2' => ( &ws2, 'json' )
@@ -53,7 +53,7 @@ my %webservices =
 
 所有到 webservices 的路由都在 **％webservices** 散列中，并通过其他有用的命名参数传递给主函数 **wap**：
 
-```perl6
+```raku
 wap(:$server-ip, :$server-port, :$default-html, :%webservices);
 ```
 
@@ -61,7 +61,7 @@ wap(:$server-ip, :$server-port, :$default-html, :%webservices);
 
 **wap** 函数位于 Wap6 使用的核心 lib 模块的外面，并包含并发和优雅的 V12 引擎：
 
-```perl6
+```raku
 react {   
   whenever IO::Socket::Async.listen($server-ip,$server-port) -> $conn {
     whenever $conn.Supply(:bin) -> $buf {
@@ -81,9 +81,9 @@ react {
 
 响应函数验证 **$buf** 并从请求头中提取 HTTP 方法，可以是 **GET** 或 **POST**（我认为将来它不会支持更多的 HTTP 方法）。使用 **GET** 方法时，它将 URL 参数（如果有的话）放入 **$get-params**。 **POST** 方法的情况下，它将主体请求放入 **$body**。
 
-然后是时候检查 Web 客户端是否请求了 webservice。 **$get-params** 包含了 **URI** 并用 link:https://github.com/perl6-community-modules/uri[URI 模块]提取，最终结果放在 **$path**：
+然后是时候检查 Web 客户端是否请求了 webservice。 **$get-params** 包含了 **URI** 并用 link:https://github.com/raku-community-modules/uri[URI 模块]提取，最终结果放在 **$path**：
 
-```perl6
+```raku
 given $path {
   when %webservices{"$_"}:exists {
     my ( &ws, $direct-type ) = %webservices{"$_"};
@@ -100,9 +100,9 @@ given $path {
 - 具有状态 HTTP 200 OK 和给定内容类型（来自内容类型函数）的响应头。
 - webservice 输出。
 
-可调用 webservice **＆ws** 可以是 **ws1**，位于 webservices 文件夹的 Perl6 模块中：
+可调用 webservice **＆ws** 可以是 **ws1**，位于 webservices 文件夹的 Raku 模块中：
 
-```perl6
+```raku
 sub ws1 ( :$get-params, :$body ) is export {
   if $get-params { return 'From ws1: ' ~ $get-params; }
   if $body { return 'From ws1: ' ~ $body; }
@@ -115,7 +115,7 @@ sub ws1 ( :$get-params, :$body ) is export {
 
 放弃所有其他可能性后，如果客户端请求公用文件夹中托管的静态文件（如html，js，css等），则：
 
-```perl6
+```raku
 given $path {
 ..
   default {
@@ -135,9 +135,9 @@ given $path {
 
 我很满意 **Wap6** 的结果。我并不假装它增长很多，但我总是想继续添加**更多功能**：SSL支持（完成！），会话管理（进行中），Cookie，文件上传等。
 
-Perl6 为表执行并发网络操作提供了非常强大的方法：link:https://docs.perl6.org/type/IO::Socket::Async[IO::Socket::Async]，一个杰作。另外，使用 **Perl6**，您可以根据需要混合使用面向对象，过程式和函数式范式。借助这些功能，您可以设计一个并发异步服务并快速实现。
+Raku 为表执行并发网络操作提供了非常强大的方法：link:https://docs.raku.org/type/IO::Socket::Async[IO::Socket::Async]，一个杰作。另外，使用 **Raku**，您可以根据需要混合使用面向对象，过程式和函数式范式。借助这些功能，您可以设计一个并发异步服务并快速实现。
 
-如果您希望在 **Perl6** 生态系统中使用 HTTP 服务和并发性更严肃的方法，请看看 link:http://cro.services/[Cro]，它代表了一个很好的机会，可以将 **Perl6** 作为 HTTP 服务空间中的强大实体。Jonathan Worthington 在同样的 Advent Calendar 的第九天写的就是link:https://perl6advent.wordpress.com/2017/12/09/http-and-web-sockets-with-cro[关于 Cro]。
+如果您希望在 **Raku** 生态系统中使用 HTTP 服务和并发性更严肃的方法，请看看 link:http://cro.services/[Cro]，它代表了一个很好的机会，可以将 **Raku** 作为 HTTP 服务空间中的强大实体。Jonathan Worthington 在同样的 Advent Calendar 的第九天写的就是link:https://rakuadvent.wordpress.com/2017/12/09/http-and-web-sockets-with-cro[关于 Cro]。
 
-同时，我将继续使用 **Wap6**，以脚本的方式，贡献 **Perl6** 生态系统，并从世界上最好的编程人员那里学习，我的意思是：**Perl** 和 **Perl6** 程序员，当然:-)
+同时，我将继续使用 **Wap6**，以脚本的方式，贡献 **Raku** 生态系统，并从世界上最好的编程人员那里学习，我的意思是：**Perl** 和 **Raku** 程序员，当然:-)
 

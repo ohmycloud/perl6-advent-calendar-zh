@@ -1,4 +1,4 @@
-== 第二十四天 - 使用 Perl 6 进行主题建模
+== 第二十四天 - 使用 Raku 进行主题建模
 
 嗨，大家好。
 
@@ -46,10 +46,10 @@ $ curl "https://en.wikiquote.org/w/api.php?action=query&prop=revisions&titles=Ma
 
 ===== WWW
 
-link:https://github.com/zoffixznet/perl6-WWW[WWW]通过Zoffix Znet是它提供了易于使用的API，包括获取和解析JSON非常简单的库。
+link:https://github.com/zoffixznet/raku-WWW[WWW]通过Zoffix Znet是它提供了易于使用的API，包括获取和解析JSON非常简单的库。
 例如，正如README所说，您可以轻松地按`jget(URL)<HASHKEY>`样式获取内容：
 
-```perl6
+```raku
 say jget('https://httpbin.org/get?foo=42&bar=x')<args><foo>;
 ```
 
@@ -69,7 +69,7 @@ link:https://github.com/titsuki/p6-Chart-Gnuplot[Chart::Gnuplot] by titsuki是li
 $ zef install Chart::Gnuplot
 ```
 
-在本文中，我们使用此模块; 但是，如果你不熟悉gnuplot，有很多选择：link:https://github.com/moritz/svg-plot[SVG::Plot]，link:https://github.com/azawawi/perl6-graphics-plplot[Graphics::PLplot]，link:https://0racle.info/articles/matplotlib_in_p6_intro[通过Inline::Python调用matplotlib函数]。
+在本文中，我们使用此模块; 但是，如果你不熟悉gnuplot，有很多选择：link:https://github.com/moritz/svg-plot[SVG::Plot]，link:https://github.com/azawawi/raku-graphics-plplot[Graphics::PLplot]，link:https://0racle.info/articles/matplotlib_in_p6_intro[通过Inline::Python调用matplotlib函数]。
 
 ===== 来自NLTK的Stopwords
 
@@ -91,7 +91,7 @@ NLTK是一个用于自然语言处理的工具包。
 
 整个源代码是：
 
-```perl6
+```raku
 use v6.c;
 use WWW;
 use URI::Escape;
@@ -147,15 +147,15 @@ $memfh.say($_) for @members;
 $memfh.close;
 ```
 
-首先，我们获得“Category：1954births”页面中列出的成员。我选择了Perl 6设计师诞生的那一年：
+首先，我们获得“Category：1954births”页面中列出的成员。我选择了Raku设计师诞生的那一年：
 
-```perl6
+```raku
 my Str @members = get-members-from-category("Category:1954_births");
 ```
 
 其中，`get-members-from-category`通过维基语录API获取成员：
 
-```perl6
+```raku
 sub get-members-from-category(Str $category --> List) {
     my $member-url = "https://en.wikiquote.org/w/api.php?action=query&list=categorymembers&cmtitle={$category}&cmlimit=100&format=json";
     @(jget($member-url)<query><categorymembers>.map(*<title>));
@@ -164,13 +164,13 @@ sub get-members-from-category(Str $category --> List) {
 
 接下来，调用`get-pages`：
 
-```perl6
+```raku
 my @pages = get-pages(@members);
 ```
 
 `get-pages` 获取给定标题（即成员）页面的子例程：
 
-```perl6
+```raku
 sub get-pages(Str @members, Int $batch = 50 --> List) {
     my Int $start = 0;
     my @pages;
@@ -193,19 +193,19 @@ Mumia%20Abu-Jamal%7CRene%20Balcer%7CIain%20Banks%7CGerard%20Batten%7CChristie%20
 
 请注意，`get-pages`子例程使用哈希上下文相关器`%()`来创建哈希序列：
 
-```perl6
+```raku
 @pages.push($_) for jget($url)<query><pages>.map({ %(body => .<revisions>[0]<content>, title => .<title>) });
 ```
 
 在那之后，我们调用 `create-documents-from-pages`：
 
-```perl6
+```raku
 my @documents = create-documents-from-pages(@pages, @members);
 ```
 
 `create-documents-from-pages` 从每个页面创建文档：
 
-```perl6
+```raku
 sub create-documents-from-pages(@pages, @members --> List) {
     my @documents;
     for @pages -> $page {
@@ -228,7 +228,7 @@ sub create-documents-from-pages(@pages, @members --> List) {
 }
 ```
 
-其中`.map(*.subst(/\link:https://docs.perl6.org/language/regexes#Named_captures[\[$<text>=(<-[\[\]|]>+?)\|$<link>=(<-[\[\]|]>+?)\]\]/, { $<text> }, :g))`和`.map(*.subst(/\[\[$<text>=(<-[\[\]|]>+?)\]\]/, { $<text> }, :g))`是隐藏命令，提取文本以显示和删除文本，以便从锚文本进行内部链接。例如，`[[Perl]]`被缩减为`Perl`。有关更多语法信息，请参阅：[https]：link:https://docs.perl6.org/language/regexes#Named_captures[//docs.perl6.org/language/regexes#Named_captures]或<https://docs.perl6.org/routine/subst>
+其中`.map(*.subst(/\link:https://docs.raku.org/language/regexes#Named_captures[\[$<text>=(<-[\[\]|]>+?)\|$<link>=(<-[\[\]|]>+?)\]\]/, { $<text> }, :g))`和`.map(*.subst(/\[\[$<text>=(<-[\[\]|]>+?)\]\]/, { $<text> }, :g))`是隐藏命令，提取文本以显示和删除文本，以便从锚文本进行内部链接。例如，`[[Perl]]`被缩减为`Perl`。有关更多语法信息，请参阅：[https]：link:https://docs.raku.org/language/regexes#Named_captures[//docs.raku.org/language/regexes#Named_captures]或<https://docs.raku.org/routine/subst>
 
 经过一些清理操作（.eg，`.map(*.subst("[", "[", :g))`）后，我们提取引号线。
 
@@ -238,7 +238,7 @@ sub create-documents-from-pages(@pages, @members --> List) {
 
 最后，我们保存文档和成员（即标题）：
 
-```perl6
+```raku
 my $docfh = open "documents.txt", :w;
 $docfh.say((.<docid>, .<personid>, .<body>).join(" ")) for @documents;
 $docfh.close;
@@ -256,7 +256,7 @@ $memfh.close;
 
 整个源代码是：
 
-```perl6
+```raku
 use v6.c;
 use Algorithm::LDA;
 use Algorithm::LDA::Formatter;
@@ -344,14 +344,14 @@ save-model($model);
 
 首先，我们加载已清理的文档并调用`create-model`：
 
-```perl6
+```raku
 my @documents = "documents.txt".IO.lines;
 my $model = create-model(@documents);
 ```
 
 `create-model`通过加载给定文档来创建LDA模型：
 
-```perl6
+```raku
 sub create-model(@documents --> Algorithm::LDA::LDAModel) {
     my $stopwords = "stopwords/english".IO.lines.Set;
     my &tokenizer = -> $line { $line.words.map(*.lc).grep(-> $w { ($stopwords !(cont) $w) and $w !~~ /^[ <:S> | <:P> ]+$/ }) };
@@ -374,14 +374,14 @@ sub create-model(@documents --> Algorithm::LDA::LDAModel) {
 
 接下来，我们绘制文档主题分布。在此绘图之前，我们加载已保存的成员
 
-```perl6
+```raku
 my @members = "members.txt".IO.lines;
 plot-topic-distribution($model, @members, @documents);
 ```
 
 `plot-topic-distribution` 使用Chart :: Gnuplot绘制主题分布：
 
-```perl6
+```raku
 sub plot-topic-distribution($model, @members, @documents, $search-regex = rx/Larry/) {
     my $target-personid = @members.pairs.grep({ .value ~~ $search-regex }).map(*.key).head;
     my $docid = @documents.map({ my ($docid, $personid, *@body) = .words; %(docid => $docid, personid => $personid, body => @body.join(" ")) })\
@@ -408,13 +408,13 @@ sub plot-topic-distribution($model, @members, @documents, $search-regex = rx/Lar
 
 在绘图之后，我们称之为`write-nbest`：
 
-```perl6
+```raku
 write-nbest($model);
 ```
 
 在LDA中，XXX表示的主题表示为单词列表。`write-nbest`写一个降价风格的主题词分配表：
 
-```perl6
+```raku
 sub write-nbest($model) {
   my $topics := $model.nbest-words-per-topic(10);
   for ^(10/5) -> $part-i {
@@ -462,7 +462,7 @@ sub write-nbest($model) {
 
 对于下一节，我们按`save-model`子程序保存模型：
 
-```perl6
+```raku
 sub save-model($model) {
   my @document-topic-matrix := $model.document-topic-matrix;
   my ($document-size, $topic-size) = @document-topic-matrix.shape;
@@ -499,7 +499,7 @@ sub save-model($model) {
 
 整个源代码是：
 
-```perl6
+```raku
 use v6.c;
 
 sub MAIN(Str :$query!) {
@@ -580,7 +580,7 @@ sub log-sum(Num $log-a, Num $log-b --> Num) {
 
 在beggining，我们加载保存的模型和准备`@document-topic`，`@topic-word`，`%vocabulary`，`@documents`，`@docbodies`，`%doc-to-person`和`@members`
 
-```perl6
+```raku
  my \doc-topic-iter = "document-topic.txt".IO.lines.iterator;
     my \topic-word-iter = "topic-word.txt".IO.lines.iterator;
     my ($document-size, $topic-size) = doc-topic-iter.pull-one.words;
@@ -616,13 +616,13 @@ sub log-sum(Num $log-a, Num $log-b --> Num) {
 
 接下来，我们`@query`使用选项设置`:$query`：
 
-```perl6
+```raku
 my @query = $query.words.map(*.lc);
 ```
 
 之后，我们计算`P(query|document)`基于Eq 的概率。前面提到的9篇文章（注意我们使用对数来避免不流动并将参数mu设置为零）并对它们进行排序。
 
-```perl6
+```raku
     my @sorted-list = gather for ^$document-size -> $doc-i {
         my Num $log-prob = gather for @query -> $token {
             my Num $log-ml-prob = Pml(@docbodies, $doc-i, $token);
@@ -635,7 +635,7 @@ my @query = $query.words.map(*.lc);
 
 `Plda`为每个主题添加给定文档概率（即lnP（主题| theta，文档））和单词给定主题概率（即lnP（word | phi，topic））的对数主题，并将它们加起来`.reduce(&log-sum);`：
 
-```perl6
+```raku
 sub Plda($token, $topic-size, $doc-i, %vocabulary is raw, @document-topic is raw, @topic-word is raw --> Num) {
     gather for ^$topic-size -> $topic {
         if %vocabulary{$token}:exists {
@@ -649,7 +649,7 @@ sub Plda($token, $topic-size, $doc-i, %vocabulary is raw, @document-topic is raw
 
 而且 `Pml`（ml表示最大似然）计数`$token`并将其标准化为文档中的总标记（注意，此计算也在日志空间中进行）：
 
-```perl6
+```raku
 sub Pml(@docbodies, $doc-i, $token --> Num) {
     my Int $num-tokens = @docbodies[$doc-i].words.grep({ /:i^ $token $/ }).elems;
     my Int $total-tokens = @docbodies[$doc-i].words.elems;
@@ -663,7 +663,7 @@ sub Pml(@docbodies, $doc-i, $token --> Num) {
 查询“perl”：
 
 ```
-$ perl6 search-quotation.p6 --query="perl"
+$ raku search-quotation.p6 --query="perl"
 "Perl will always provide the null." by Larry Wall -3.301156
 "Perl programming is an *empirical* science!" by Larry Wall -3.345189
 "The whole intent of Perl 5's module system was to encourage the growth of Perl culture rather than the Perl core." by Larry Wall -3.490238
@@ -671,7 +671,7 @@ $ perl6 search-quotation.p6 --query="perl"
 "At many levels, Perl is a 'diagonal' language." by Larry Wall -3.575779
 "Almost nothing in Perl serves a single purpose." by Larry Wall -3.589218
 "Perl has a long tradition of working around compilers." by Larry Wall -3.674111
-"As for whether Perl 6 will replace Perl 5, yeah, probably, in about 40 years or so." by Larry Wall -3.684454
+"As for whether Raku will replace Perl 5, yeah, probably, in about 40 years or so." by Larry Wall -3.684454
 "Well, I think Perl should run faster than C." by Larry Wall -3.771155
 "It's certainly easy to calculate the average attendance for Perl conferences." by Larry Wall -3.864075
 ```
@@ -679,7 +679,7 @@ $ perl6 search-quotation.p6 --query="perl"
 查询“apple”：
 
 ```shell
-$ perl6 search-quotation.p6 --query="apple"
+$ raku search-quotation.p6 --query="apple"
 "Steve Jobs is the"With phones moving to technologies such as Apple Pay, an unwillingness to assure security could create a Target-like exposure that wipes Apple out of the market." by Rob Enderle -3.841538
 "*:From Joint Apple / HP press release dated 1 January 2004 available [http://www.apple.com/pr/library/2004/jan/08hp.html here]." by Carly Fiorina -3.904489
 "Samsung did to Apple what Apple did to Microsoft, skewering its devoted users and reputation, only better. ... There is a way for Apple to fight back, but the company no longer has that skill, and apparently doesn't know where to get it, either." by Rob Enderle -3.940359

@@ -1,4 +1,4 @@
-== link:https://perl6advent.wordpress.com/2017/12/23/day-23-the-wonders-of-perl6-golf/[第二十三天-Perl 6 高尔夫]
+== link:https://rakuadvent.wordpress.com/2017/12/23/day-23-the-wonders-of-raku-golf/[第二十三天-Raku 高尔夫]
 
 啊，圣诞节！还有什么比和你的朋友与家人一起坐在桌子旁边玩高尔夫球代码还好呢！ ...等等，什么？
 
@@ -6,11 +6,11 @@
 
 如果你还没有注意到，有一个不错的网站可以玩高尔夫球代码：link:https://code-golf.io/[https://code-golf.io/]。这个网站很酷的地方是，它不仅仅只支持 perl 6！在撰写本文时，它还支持其他 6 种语言。嗯...
 
-无论如何，因为我在那个网站的成绩还不错，我会分享一些我觉得最好的解决方案。所有的 trickety-hackety，unicode-cheatery 和 mind-blowety。在我们看来，也许我们甚至会看到即使在代码高尔夫中，perl 6 也非常link:https://raw.githubusercontent.com/perl6/marketing/master/TablePosters/6lang-Concise/v1--6lang-Concise--square.png[简洁]易读。也就是说，如果你很难将你的圣诞愿望放在一张卡片上，那么可能会放得下一行 perl 6 代码。
+无论如何，因为我在那个网站的成绩还不错，我会分享一些我觉得最好的解决方案。所有的 trickety-hackety，unicode-cheatery 和 mind-blowety。在我们看来，也许我们甚至会看到即使在代码高尔夫中，perl 6 也非常link:https://raw.githubusercontent.com/raku/marketing/master/TablePosters/6lang-Concise/v1--6lang-Concise--square.png[简洁]易读。也就是说，如果你很难将你的圣诞愿望放在一张卡片上，那么可能会放得下一行 perl 6 代码。
 
 我不会提供完整的解决方案，不会破坏你的圣诞乐趣，但我会给你足够的提示，以提出有竞争力的解决方案。
 
-这个圣诞节我就是想让你得到一些乐趣。所以你先下载一份 link:https://perl6.org/downloads/[rakudo]，以确保你可以跟随。稍后我们会有一些南瓜派，我们会link:https://www.youtube.com/watch?v=Y51JyG7M3dw#t=26s[做一些颂歌]。如果您在运行 perl 6 时遇到任何问题，可以在 freenode 上加入 link:https://docs.perl6.org/webchat.html[＃perl6 频道]以获得一些帮助。这就是说，link:https://code-golf.io/[https://code-golf.io/] 本身为你提供了一个很好的编辑器来编写和评估你的代码，所以应该没有问题。
+这个圣诞节我就是想让你得到一些乐趣。所以你先下载一份 link:https://raku.org/downloads/[rakudo]，以确保你可以跟随。稍后我们会有一些南瓜派，我们会link:https://www.youtube.com/watch?v=Y51JyG7M3dw#t=26s[做一些颂歌]。如果您在运行 perl 6 时遇到任何问题，可以在 freenode 上加入 link:https://docs.raku.org/webchat.html[＃raku 频道]以获得一些帮助。这就是说，link:https://code-golf.io/[https://code-golf.io/] 本身为你提供了一个很好的编辑器来编写和评估你的代码，所以应该没有问题。
 
 === 一些基本的例子
 
@@ -42,7 +42,7 @@
 
 就是如此容易！所以我们还是写代码吧：
 
-```perl6
+```raku
 for ^16 { put (+combinations($^row,$_) for 0..$row) }
 ```
 
@@ -50,7 +50,7 @@ for ^16 { put (+combinations($^row,$_) for 0..$row) }
 
 哦......等等，这有一个完全不同的解决方案。好吧，让我们来看看：
 
-```perl6
+```raku
 .put for 1, { |$_,0 Z+ 0,|$_ } ... 16
 ```
 
@@ -75,23 +75,23 @@ for ^16 { put (+combinations($^row,$_) for 0..$row) }
 1 15 105 455 1365 3003 5005 6435 6435 5005 3003 1365 455 105 15 1
 ```
 
-啊哈！ 我们做到了。 所以究竟是怎么回事儿？ 那么，在 perl 6 中，你可以用一个非常简单的语法创建 `2,4,8 ... ∞` 这样的序列。 通常你会让它自己计算序列，但你也可以提供一个代码块来求值。 这太棒了！ 在其他语言中，你经常需要一个带有状态变量的循环，而序列操作符为你做了所有的事情！ 这个功能可能单独需要一篇link:https://perl6.party/post/Perl-6-Seqs-Drugs-and-Rock-n-Roll[文章]或link:https://perl6.party/post/Perl-6-Seqs-Drugs-and-Rock-n-Roll--Part-2[𝍪]。
+啊哈！ 我们做到了。 所以究竟是怎么回事儿？ 那么，在 perl 6 中，你可以用一个非常简单的语法创建 `2,4,8 ... ∞` 这样的序列。 通常你会让它自己计算序列，但你也可以提供一个代码块来求值。 这太棒了！ 在其他语言中，你经常需要一个带有状态变量的循环，而序列操作符为你做了所有的事情！ 这个功能可能单独需要一篇link:https://raku.party/post/Perl-6-Seqs-Drugs-and-Rock-n-Roll[文章]或link:https://raku.party/post/Perl-6-Seqs-Drugs-and-Rock-n-Roll--Part-2[𝍪]。
 
-其余的只是一个 for 循环和 link:https://docs.perl6.org/routine/put[put] 调用。 这里唯一的技巧就是理解它使用的是列表，所以当你指定序列的端点时，它实际上是检查元素的数量。 另外，您需要用 `|` 来展平列表。
+其余的只是一个 for 循环和 link:https://docs.raku.org/routine/put[put] 调用。 这里唯一的技巧就是理解它使用的是列表，所以当你指定序列的端点时，它实际上是检查元素的数量。 另外，您需要用 `|` 来展平列表。
 
 如果删除空格并应用本文中提到的所有技巧，这应该会让您的字符数为 26。 这相当有竞争力。
 
 同样，其他任务通常有相当直接的解决方案。 例如，对于 link:https://code-golf.io/evil-numbers[Evil NUmbers]，你可以写这样的东西：
 
-```perl6
+```raku
 .base(2).comb(~1) %% 2 && .say for ^50
 ```
 
 删除一些空格，应用一些技巧，你几乎就达到要求了。
 
-我们再举一个例子：link:https://code-golf.io/pangram-grep[Pangram Grep]。在这里我们可以使用 link:https://docs.perl6.org/language/setbagmix[set操作符]：
+我们再举一个例子：link:https://code-golf.io/pangram-grep[Pangram Grep]。在这里我们可以使用 link:https://docs.raku.org/language/setbagmix[set操作符]：
 
-```perl6
+```raku
 ‘a’..‘z’ ⊆ .lc.comb && .say for @*ARGS
 ```
 
@@ -123,13 +123,13 @@ for ^16 { put (+combinations($^row,$_) for 0..$row) }
 
 例如，当打高尔夫时，你想略去不必要的空白，所以也许你会想写一些这样的东西：
 
-```perl6
+```raku
 say 5max3  # ERROR
 ```
 
 这当然不起作用，我们也不能责怪编译器没有解决这个混乱问题。但是，试试这个：
 
-```perl6
+```raku
 say ⑤max③  # OUTPUT: «5␤»
 ```
 
@@ -137,27 +137,27 @@ say ⑤max③  # OUTPUT: «5␤»
 
 === 条件
 
-如果有很好的高尔夫语言，但不是 Perl 6. 我的意思是，看看这个：
+如果有很好的高尔夫语言，但不是 Raku. 我的意思是，看看这个：
 
 ```ruby
 puts 10<30?1:2   # ruby
 ```
 
-```perl6
+```raku
 say 10 <30??1!!2 # perl 6
 ```
 
-Perl 6 的三元操作符不仅多需要俩个字符，而且 `<` 运算符周围还要有一些必要的的空白字符！他们有什么问题，对吧？他们怎么敢设计一种无代码高尔夫语言?!
+Raku 的三元操作符不仅多需要俩个字符，而且 `<` 运算符周围还要有一些必要的的空白字符！他们有什么问题，对吧？他们怎么敢设计一种无代码高尔夫语言?!
 
 那么，我们可以通过某些方法解决它。其中之一是链式操作符。例如：
 
-```perl6
+```raku
 say 5>3>say(42)
 ```
 
 如果 5≤3，则不需要进行其他比较，因此它不会运行它。这样我们可以节省至少一个字符。在略有相关的说明中，请记住，junctions 也可能派上用场：
 
-```perl6
+```raku
 say ‘yes!’ if 5==3|5
 ```
 
@@ -168,7 +168,7 @@ say ‘yes!’ if 5==3|5
 你不会相信这有时是多么的有用。想要打印所有棋子的名字？好：
 
 
-```perl6
+```raku
 say (‘♔’…‘♙’)».uniname».words»[2]
 #   KING QUEEN ROOK BISHOP KNIGHT PAWN
 ```
@@ -179,21 +179,21 @@ say (‘♔’…‘♙’)».uniname».words»[2]
 
 link:https://code-golf.io/φ[其中一项任务]告诉我们打印 φ 的前1000个小数位。那么，这很容易！
 
-```perl6
+```raku
 say ‘1.6180339887498948482045868343656381177203091798057628621354486227052604628189024497072072041893911374847540880753868917521266338622235369317931800607667263544333890865959395829056383226613199282902678806752087668925017116962070322210432162695486262963136144381497587012203408058879544547492461856953648644492410443207713449470495658467885098743394422125448770664780915884607499887124007652170575179788341662562494075890697040002812104276217711177780531531714101170466659914669798731761356006708748071013179523689427521948435305678300228785699782977834784587822891109762500302696156170025046433824377648610283831268330372429267526311653392473167111211588186385133162038400522216579128667529465490681131715993432359734949850904094762132229810172610705961164562990981629055520852479035240602017279974717534277759277862561943208275051312181562855122248093947123414517022373580577278616008688382952304592647878017889921990270776903895321968198615143780314997411069260886742962267575605231727775203536139362’
 ```
 
 是的！！！
 
-好吧，这需要 1000 多个字符......当然，我们可以尝试计算它，但这不完全符合link:https://perl6advent.wordpress.com/2017/12/01/[圣诞节的精神]。我们想作弊。
+好吧，这需要 1000 多个字符......当然，我们可以尝试计算它，但这不完全符合link:https://rakuadvent.wordpress.com/2017/12/01/[圣诞节的精神]。我们想作弊。
 
-如果我们看一下 link:https://docs.perl6.org/type/Int#method_polymod[polymod] 的文档，有一点提示：
+如果我们看一下 link:https://docs.raku.org/type/Int#method_polymod[polymod] 的文档，有一点提示：
 
-```perl6
+```raku
 my @digits-in-base37 = 9123607.polymod(37 xx *); # Base conversion
 ```
 
-嗯......这样就给了我们任意数量的数字。我们可以走多高？那么，这取决于我们想要存储数字的形式。鉴于 code-golf.io 计算码位，我们可以使用base 0x10FFFF（即使用所有可用的码位）。或者，在这种情况下，我们将使用base 0x10FFFE，link:https://docs.perl6.org/language/traps#All_Text_is_Normalized_By_Default[因为]：
+嗯......这样就给了我们任意数量的数字。我们可以走多高？那么，这取决于我们想要存储数字的形式。鉴于 code-golf.io 计算码位，我们可以使用base 0x10FFFF（即使用所有可用的码位）。或者，在这种情况下，我们将使用base 0x10FFFE，link:https://docs.raku.org/language/traps#All_Text_is_Normalized_By_Default[因为]：
 
 ```
 ☠☠☠⚠⚠⚠ WARNING! WARNING! WARNING! ⚠⚠⚠☠☠☠
@@ -214,7 +214,7 @@ HIDE YOUR WIFE. AND HIDE YOUR HUSBAND.
 我们如何翻转操作？在其中一次 link:https://github.com/rakudo/rakudo/wiki/Monthly-Bug-Squash-Day[squashathons] 我找到一张关于我以前不知道的功能的票。基本上，票据说 Rakudo 正在做它不应该做的事情，这当然是我们下一次会被滥用的事情。但现在我们处于相对理智的范围之内：
 
 
-```perl6
+```raku
 say ‘1.’,:1114110[‘o򲔐𦔏򄠔񟯶󐚉񯓦򝼤񋩟󅾜󖾩񆔈򡔙򝤉񎗎񕧣񡉽󎖪󽡂􂳚񖨸򆀍􋵔󴈂𨬎򭕴򢑬񛉿򰏷𰑕󜆵򾩴ந񘚡𐂇򘮇񢻳𺐅࿹𪏸񄙍򞏡򈘏󬥝𫍡𱀉򌝓򭀢񤄓􋯱󜋝񟡥𖏕񖾷򇋹🼟򠍍񿷦𧽘嗟󬯞񿡥𸖉񿒣򄉼󣲦󉦩󸾧󎓜𦅂񰃦񲍚􍰍𧮁񦲋򶟫𰌡򡒶䨀𗋨𛰑򾎹򄨠󑓮򁇐𵪶𱫞񱛦󿥐򌯎񾖾򳴪򕩃󧨑𥵑򦬽񡇈򌰘񿸶񿜾寡򔴩񻊺񛕄񌍌󶪼􁇘񶡁󃢖򗔝񽑖򮀓󘓥󼿶󢽈򰯬끝󡯮磪󂛕򩻛񲽤򊥍􆃂뎛𘝞򊕆𝧒񰕺𭙪򺗝󲝂󊹛𺬛𛒕񿢖󵹱󮃞󟝐񱷳􋻩𿞸񫵗򣥨򚘣򶝠򯫞󌋩򑠒򅳒𔇆񘦵򌠐𢕍򡀋𪱷𢍟񗈼򙯬񨚑񙦅󘶸󜹕򷒋񤍠󻁾’.ords]
 ```
 

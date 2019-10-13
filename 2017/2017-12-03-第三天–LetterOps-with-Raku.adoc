@@ -1,4 +1,4 @@
-== 第三天 – LetterOps with Perl6
+== 第三天 – LetterOps with Raku
 
 === 规模
 
@@ -22,9 +22,9 @@ Dear Santa: I have been a good boy so I want you to bring me a collection of scy
 
 “我能做到吗？”。圣诞老人重复自己。他必须从单线混乱中提取一份礼物清单。例如，除以 `and`。
 
-当然，使用 Perl 6 可以使用 `$þ` 作为变量，甚至可以link:https://en.wikipedia.org/wiki/Runic_(Unicode_block[使用]) `our $ᚣ= True` 作为标准，这是他最喜欢的语言。在一行中，您可以获得所有块，如下所示：
+当然，使用 Raku 可以使用 `$þ` 作为变量，甚至可以link:https://en.wikipedia.org/wiki/Runic_(Unicode_block[使用]) `our $ᚣ= True` 作为标准，这是他最喜欢的语言。在一行中，您可以获得所有块，如下所示：
 
-```perl6
+```raku
 [ "Dear Santa: I have been a good boy so I want you to bring me a collection of scythes", "an ocean liner with a captain", "a purser", "a time travel machine", "instructions to operate it", "I know I haven't been so good at times but that is why I'm asking the time machine so that I can make it good", "well", "also find out what happened on July 13th which I completely forgot.\n" ]
 ```
 
@@ -44,13 +44,13 @@ Dear Santa: I have been a good boy so I want you to bring me a collection of scy
 
 离屏幕最近的那些精灵观察到大量的红色，但不是很好的红色，没有任何类似于工作代码。所以他们给了鲁道夫一张便条（红红的鼻子驯鹿）一张便条，他用一只小鹿角忠实地扛着它。
 
-“那么我们应该回到 Perl6 吗？”
+“那么我们应该回到 Raku 吗？”
 
-=== 使用 Perl 6 处理 Markdown
+=== 使用 Raku 处理 Markdown
 
 圣诞老人发现了 `Text::Markdown`，他立即安装了该模块：
 
-```perl6
+```raku
 zef install Text::Markdown
 ```
 
@@ -154,9 +154,9 @@ And this is what I want
 === 包起来
 
 
-圣诞老人和 Perl 6 是一个很好的比赛，因为他们都是在圣诞节的时候来的。圣诞老人发现你可以自己做很多有用的事情，或者使用最近可用的优质模块之一。
+圣诞老人和 Raku 是一个很好的比赛，因为他们都是在圣诞节的时候来的。圣诞老人发现你可以自己做很多有用的事情，或者使用最近可用的优质模块之一。
 
-不过，这位作者在给圣诞老人的信中将包括一些帮助，以继续介绍由他维护的这篇文章中使用的两个模块，这些模块需要更多有经验的编码人员进行测试，扩展或者重新编写。但他很高兴地看到，使用Perl6可以直接完成处理给圣诞老人的信件等世俗和略微神圣的事情。你也应该这样做。
+不过，这位作者在给圣诞老人的信中将包括一些帮助，以继续介绍由他维护的这篇文章中使用的两个模块，这些模块需要更多有经验的编码人员进行测试，扩展或者重新编写。但他很高兴地看到，使用Raku可以直接完成处理给圣诞老人的信件等世俗和略微神圣的事情。你也应该这样做。
 
 这篇文章的代码和样例可以从 link:https://github.com/JJ/santa-markdown[GitHub] 获得。也是这个文本。帮助和建议非常受欢迎。
 

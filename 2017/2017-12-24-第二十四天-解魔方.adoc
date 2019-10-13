@@ -1,8 +1,8 @@
-== link:https://perl6advent.wordpress.com/2017/12/24/[第二十四天-解魔方]
+== link:https://rakuadvent.wordpress.com/2017/12/24/[第二十四天-解魔方]
 
 === 介绍
 
-我在圣诞节的愿望清单上有一个速度魔方，我真的很兴奋。 :)我想分享一些Perl 6代码的热情。
+我在圣诞节的愿望清单上有一个速度魔方，我真的很兴奋。 :)我想分享一些Raku代码的热情。
 
 我在89年从高中毕业，所以我恰好是在青少年时期拥有魔方的合适年龄。我记得试图在巴士上炫耀，让我的时间缩短到不到一分钟。我在80年代从当地的一家玩具店拿到了一本小册子，其中展示了一个关于如何解决我记忆的立方体的算法。我再也没有这本小册子了。多年来我一直坚持，但从来没有达到竞争水平。
 
@@ -48,9 +48,9 @@
 
 github上提供了该模块的最新版本。这里介绍的代码来自最初的版本。
 
-Perl 6允许您创建Enumerations，因此您可以在代码中使用实际的单词而不是查找值，所以让我们从一些我们需要的内容开始：
+Raku允许您创建Enumerations，因此您可以在代码中使用实际的单词而不是查找值，所以让我们从一些我们需要的内容开始：
 
-```perl6
+```raku
 enum Side «:Up('U') :Down('D') :Front('F') :Back('B') :Left('L') :Right('R')»;
 enum Colors «:Red('R') :Green('G') :Blue('B') :Yellow('Y') :White('W') :Orange('O')»;
 ```
@@ -59,7 +59,7 @@ enum Colors «:Red('R') :Green('G') :Blue('B') :Yellow('Y') :White('W') :Orange(
 
 我们需要一个类，以便我们可以存储属性并拥有方法，所以我们的类定义具有：
 
-```perl6
+```raku
 class Cube::Three {
     has %!Sides;
     ...
@@ -87,7 +87,7 @@ G0 G3 G6 R0 R3 R6 B0 B3 B6 B0 B3 B6
 
 我添加的第一种方法是做每个脸部顺时针转动。
 
-```perl6
+```raku
 method F {
     self!rotate-clockwise(Front);
     self!fixup-sides([
@@ -106,7 +106,7 @@ method F {
 
 单面的顺时针旋转显示正在传递的原始面，并使用阵列切片来改变原始面的顺序。
 
-```perl6
+```raku
 # 0 1 2    6 3 0
 # 3 4 5 -> 7 4 1
 # 6 7 8    8 5 2
@@ -117,7 +117,7 @@ method !rotate-clockwise(Side \side) {
 
 要为移动添加其余的符号，我们添加一些简单的包装方法：
 
-```perl6
+```raku
 method F2 { self.F.F; }
 method Fʼ { self.F.F.F; }
 ```
@@ -126,7 +126,7 @@ F2只需要移动两次; F'作弊：3个权利左转。
 
 在这一点上，我必须确保我的回合正在做他们应该做的事情，所以我添加了一个gist方法（当一个对象用say输出时被调用）。
 
-```perl6
+```raku
 say Cube::Three.new.U2.D2.F2.B2.R2.L2;
 ```
 
@@ -144,7 +144,7 @@ G B G R O R B G B O R O
 
 gist 的源代码是：
 
-```perl6
+```raku
 method gist {
     my $result;
     $result = %!Sides{Up}.rotor(3).join("\n").indent(6);
@@ -171,7 +171,7 @@ method gist {
 
 这个要点非常适合逐步检查，但为了调试，我们需要一些更紧凑的东西：
 
-```perl6
+```raku
 method dump {
     gather for (Up, Front, Right, Back, Left, Down) -> $side {
         take %!Sides{$side}.join('');
@@ -181,7 +181,7 @@ method dump {
 
 这将按照特定的顺序在边上迭代，然后使用gather take语法收集每一边的字符串表示形式，然后使用|将它们连接在一起。现在我们可以编写像：
 
-```perl6
+```raku
 use Test; use Cube::Three;
 my $a = Cube::Three.new();
 is $a.R.U2.Rʼ.Uʼ.R.Uʼ.Rʼ.Lʼ.U2.L.U.Lʼ.U.L.dump,
@@ -193,7 +193,7 @@ is $a.R.U2.Rʼ.Uʼ.R.Uʼ.Rʼ.Lʼ.U2.L.U.Lʼ.U.L.dump,
 
 虽然计算机不一定需要旋转立方体，但如果我们可以旋转立方体，则会更容易遵循该算法，因此我们为六个可能的旋转中的每一个添加一个，例如：
 
-```perl6
+```raku
 method rotate-F-U {
      self!rotate-clockwise(Right);
      self!rotate-counter-clockwise(Left);
@@ -218,7 +218,7 @@ method rotate-F-U {
 在我们开始测试时，我们需要确保我们可以知道何时立方体已解决;我们不关心立方体的方向，所以我们验证中心颜色与脸上的所有其他颜色相匹配：
 
 
-```perl6
+```raku
 method solved {
     for (Up, Down, Left, Right, Back, Front) -> $side {
         return False unless
@@ -232,7 +232,7 @@ method solved {
 
 接下来，我添加了一种方法来搅乱魔方，所以我们可以考虑实施一种解决方法。
 
-```perl6
+```raku
 method scramble {
     my @random = <U D F R B L>.roll(100).squish[^10];
     for @random -> $method {
@@ -246,7 +246,7 @@ method scramble {
 
 最后，我准备好开始解决问题了！这就是事情变得复杂的地方。初学者方法的第一步经常被描述为直观的。这意味着它很容易解释......但不容易编码。所以，扰流警报，截至本文发布时，解决的第一步就完成了。对于第一步的完整算法，请查看链接的github网站。
 
-```perl6
+```raku
 method solve {
     self.solve-top-cross;
 }
@@ -275,7 +275,7 @@ method solve-top-cross {
 
 目前解决十字架的内容长达100多行，所以我不会经历所有的步骤。这是“简单”部分
 
-```perl6
+```raku
 my @middle-edges =
     [Front, Right],
     [Right, Back],
@@ -319,8 +319,8 @@ for @middle-edges -> $edge {
 
 有了这个方法的完整版本，我们现在用这个程序来解决白十字：
 
-```perl6
-#!/usr/bin/env perl6
+```raku
+#!/usr/bin/env raku
 
 use Cube::Three;
 my $cube = Cube::Three.new();
@@ -359,7 +359,7 @@ O O R Y O W O O R W Y B
 
 请注意，随着我们的进一步发展，这些步骤变得不那么“直观”，并且根据我的估计，编码更容易。例如，最后一步需要检查四个部分的方向，必要时旋转立方体，然后执行14步移动。 （在上面的测试中显示）。
 
-希望我对Cubing和Perl 6的喜爱让你期待你的下一个项目！
+希望我对Cubing和Raku的喜爱让你期待你的下一个项目！
 
 对于未来的读者，我将在模块解决完成后的评论中注明。
 

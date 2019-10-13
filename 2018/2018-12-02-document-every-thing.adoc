@@ -8,11 +8,11 @@
 
 没有。
 
-Perl 6 以下面的方式来救援：
+Raku 以下面的方式来救援：
 
-link:https://docs.perl6.org/syntax/Creating%20grammars[grammar]
+link:https://docs.raku.org/syntax/Creating%20grammars[grammar]
 
-```perl6
+```raku
 unit grammar Santa-Letter;
 
 token TOP           { <dear> \v+ <paragraph> [\v+ <paragraph>]* \v+ <signature>\v*}
@@ -40,7 +40,7 @@ So I want a plush Camelia studded with diamonds.
 
 一个简单的脚本将使用该 grammar 并在单封信中获取签名：
 
-```perl6
+```raku
 use Santa-Letter;
 
 sub MAIN ( Str $file = "letter.txt" ) {
@@ -70,11 +70,11 @@ sub MAIN ( Str $file = "letter.txt" ) {
 
 圣诞老人嘟嚷着，但最终检查了他的 Santa-Letter grammar 的主分支并开始着手研究它。 当然，使用 Pod 6
 
-# Pod 6 stands for “Plain Old documentation for Perl 6”
+# Pod 6 stands for “Plain Old documentation for Raku”
 
-它（显然）不是首字母缩略词。 Pod6 是一个帮助 Perl 6 编码人员编写文档的 DSL。 它是一种标记语言，它使用 `=` 来启动命令和段落级标记。 我们会做到这一点，但目前，Santa 意识到最好的事情之一是它如何与 Perl 6 本身集成。 因此，他对检查程序进行了第二次迭代：
+它（显然）不是首字母缩略词。 Pod6 是一个帮助 Raku 编码人员编写文档的 DSL。 它是一种标记语言，它使用 `=` 来启动命令和段落级标记。 我们会做到这一点，但目前，Santa 意识到最好的事情之一是它如何与 Raku 本身集成。 因此，他对检查程序进行了第二次迭代：
 
-```perl6
+```raku
 #| This reads a letter file
 sub MAIN ( Str $file = "letter.txt" ) {
     my $letter =$file.IO.slurp;
@@ -100,7 +100,7 @@ Usage:
 
 “有文档比没有文档更好”，他想。 但这还不够。 他完全使用自由软件进入北极票务系统，并要求提供更多文档并将任务分配给圣诞老人。 圣诞老人大声抗议，但顺从了。
 
-```perl6
+```raku
 #|{ This reads a letter file in text format.
 With no arguments, it will read the C<letter.txt> file.
 }
@@ -114,8 +114,8 @@ sub MAIN ( Str $file = "letter.txt" ) {
 
 当使用 `--help` 调用时，这会打印相同的消息。 这是文档。 运行时:
 
-```perl6
-perl6 --doc get-signed.p6
+```raku
+raku --doc get-signed.p6
 ```
 
 它打印了:
@@ -127,7 +127,7 @@ sub MAIN(
 This reads a letter file in text format. With no arguments, it will read the C file.
 ```
 
-所以Perl 6理解注释和附加到它的代码，并自动打印两者。 记录例程就像这样简单。
+所以Raku理解注释和附加到它的代码，并自动打印两者。 记录例程就像这样简单。
 
 此外，当在实际文件上运行时，最后一句被踢了，它打印出来：
 
@@ -135,7 +135,7 @@ This reads a letter file in text format. With no arguments, it will read the C f
 Pod::Block::Declarator.new(WHEREFORE => sub MAIN (Str $file = "letter.txt") { #`(Sub|81308800) ... }, config => {}, contents => [])
 ```
 
-与其他语言中用于注释的其他DSL不同，例如Perl 5中的Markdown或Pod本身，Pod 6不仅是用于注释的DSL，它还是Perl 6本身的一部分，因此，它由Perl 6解析器解释，其内部结构可用于 `$=pod` 变量中的内省。 在这种情况下，注释是一个 `Pod::Block::Declarator`，该数据结构包含`WHEREFORE`键，其中包含声明的函数和注释。 但是，`contents`和`config`为空。 他们不应该这样做。
+与其他语言中用于注释的其他DSL不同，例如Perl 5中的Markdown或Pod本身，Pod 6不仅是用于注释的DSL，它还是Raku本身的一部分，因此，它由Raku解析器解释，其内部结构可用于 `$=pod` 变量中的内省。 在这种情况下，注释是一个 `Pod::Block::Declarator`，该数据结构包含`WHEREFORE`键，其中包含声明的函数和注释。 但是，`contents`和`config`为空。 他们不应该这样做。
 
 更重要的是，注释中使用的一点点实际格式不起作用。 更不用说实际模块没有真正文档化。 现在是圣诞老人不高兴了。
 
@@ -148,7 +148,7 @@ Pod::Block::Declarator.new(WHEREFORE => sub MAIN (Str $file = "letter.txt") { #`
 
 =head1 NAME
 
-Santa-Letter - A grammar for letters to Santa for the L<Perl 6 Advent Calendar|https://perl6advent.wordpress.com>
+Santa-Letter - A grammar for letters to Santa for the L<Raku Advent Calendar|https://rakuadvent.wordpress.com>
 
 =head1 SYNOPSIS
 
@@ -157,14 +157,14 @@ Parses letters formatted nicely and written by all good kids in the world.
 =end pod
 ```
 
-方便地放在文件的末尾，当用`perl6 -doc Santa-Letter.pm6`调用时，或简单地`perl6 --doc Santa-Letter`如果它
-已安装，甚至`p6doc Santa-Letter`如果是`perl6/doc`的
+方便地放在文件的末尾，当用`raku -doc Santa-Letter.pm6`调用时，或简单地`raku --doc Santa-Letter`如果它
+已安装，甚至`p6doc Santa-Letter`如果是`raku/doc`的
 在场，会写出类似的东西：
 
 ```pod
 NAME
 
-Santa-Letter - A grammar for letters to Santa for the Perl 6 Advent
+Santa-Letter - A grammar for letters to Santa for the Raku Advent
 Calendar
 
 SYNOPSIS
@@ -176,24 +176,24 @@ world.
 但是你会注意到这种类型的输出已经消除了一段标记。 `L`创建链接，但显然只有在输出格式支持时才这样做。 那么让我们试试其中一个：
 
 ```shell
-perl6 --doc=HTML Santa-Letter.pm6
+raku --doc=HTML Santa-Letter.pm6
 ```
 
 将输出大量代码，其中包括以下行：
 
-> Santa-Letter - A grammar for letters to Santa for the link:https://perl6advent.wordpress.com/[Perl 6 Advent Calendar]
+> Santa-Letter - A grammar for letters to Santa for the link:https://rakuadvent.wordpress.com/[Raku Advent Calendar]
 
 清楚地显示链接的输出。
 
-事实上，此命令将使用 `Pod::To::HTML` 模块将 Pod 数据结构转换为 HTML。 使用任何其他东西将调用相应的模块，并且生态系统上有许多可用的link:https://modules.perl6.org/search/?q=pod%3A%3Ato[模块]。 例如，`Pod::To::Pager` 将使用系统的分页使东西更美观。
+事实上，此命令将使用 `Pod::To::HTML` 模块将 Pod 数据结构转换为 HTML。 使用任何其他东西将调用相应的模块，并且生态系统上有许多可用的link:https://modules.raku.org/search/?q=pod%3A%3Ato[模块]。 例如，`Pod::To::Pager` 将使用系统的分页使东西更美观。
 
 ```shell
-perl6 --doc=Pager Santa-Letter.pm6 
+raku --doc=Pager Santa-Letter.pm6 
 ```
 
 会输出这个
 
-!link:https://perl6advent.files.wordpress.com/2018/12/pager.png[img]
+!link:https://rakuadvent.files.wordpress.com/2018/12/pager.png[img]
 
 此外，该文档遵循所有模块中使用的约定。 `NAME` 应描述名称和简短的 oneliner，告诉模块的内容，而 `SYNOPSIS` 包含更长的描述。 虽然这很好，但真正的文档应包含示例。
 
@@ -209,25 +209,25 @@ say Santa-Letter.parse("Dear Santa\nAll I want for Christmas\nIs you\n Mariah");
 
 示例包含在代码块中，从Pod6的角度来看，它们是 `Pod::Block::Code`对象。 实际上，这是一件好事。 让我们将这一小段代码添加到我们的 grammar 中：
 
-```perl6
+```raku
 our $pod = $=pod[0];
 ```
 
 Grammar 是类，它们具有类作用域的变量。 我们无法导出 `$=pod` 变量以避免与其他人发生冲突，但我们可以导出它，然后在我们的程序中使用它：
 
-```perl6
+```raku
 say $Santa-Letter::pod.perl;
 ```
 
 或者，甚至更好， 安装 `Data::Dump` 并写下这样的东西:
 
-```perl6
+```raku
 say Dump( $Santa-Letter::pod, :indent(4), :3max-recursion );
 ```
 
 它使用我们声明的 `pod` 类变量, 并且它是这样打印的:
 
-!link:https://perl6advent.files.wordpress.com/2018/12/structure.png[img]
+!link:https://rakuadvent.files.wordpress.com/2018/12/structure.png[img]
 
 这个树可以称为POM（Pod对象模型），除了与每个块一起使用的已知的 `name` 和 `config` 元数据外，还包括同一级别的Pod6块数组。 每个人都有通用属性和特定属性，例如标题中的级别。 无论如何，有趣的是我们作为示例使用的代码本身可以作为 `Pod::Block::Code` 对象的内容。
 
@@ -262,7 +262,7 @@ say "The letter signed by ", Santa-Letter.parse($letter),
 
 代码可以在Pod中以不同方式表示。 第一个是已知的; 第二个使用缩进，即Markdown，来表示同一件事情。 我们也可以使用 `=for` 作为段落块，在这种情况下使用代码类型声明，并将继续直到下一个空白行。 这是一种不需要 `=end` 指令的缩写方式。 但是还有更多的东西：配置变量 `:notest :reason("Variable defined above")`。 这些配置变量是任意的，我们可以添加任意多个。 他们将转到块的 `config` 属性，我们可以使用它们。 这正是我们将在此脚本中处理代码示例的内容：
 
-```perl6
+```raku
 for $Santa-Letter::pod.contents -> $block {
     next if $block !~~ Pod::Block::Code;
     if $block.config<notest> {
@@ -301,5 +301,5 @@ say Santa-Letter.parse($letter)
 
 # 回到生产
 
-提供了这个link:https://github.com/JJ/my-perl6-examples/blob/master/grammars/Santa-Letter.pm6[文档模块]，IT精灵非常高兴，他的耳朵停止颤抖和发红。 他也可以给每个 token 编写文档，但足够了，至少他有一些例子可以让应用程序运行。 鲁道夫睡得很熟，现在他必须在信件接收微服务和客户关系宏服务之间建立桥梁。 他可能会使用 link:https://cro.services/[Cro]，但这是另一天的主题。
+提供了这个link:https://github.com/JJ/my-raku-examples/blob/master/grammars/Santa-Letter.pm6[文档模块]，IT精灵非常高兴，他的耳朵停止颤抖和发红。 他也可以给每个 token 编写文档，但足够了，至少他有一些例子可以让应用程序运行。 鲁道夫睡得很熟，现在他必须在信件接收微服务和客户关系宏服务之间建立桥梁。 他可能会使用 link:https://cro.services/[Cro]，但这是另一天的主题。
 

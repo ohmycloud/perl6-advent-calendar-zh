@@ -1,6 +1,6 @@
 == 第八天 - Adventures in NQP Land: Hacking the Rakudo Compiler
 
-对旧圣诞节经典“圣诞节十二天”的道歉，我给你一个 Perl 6 版本的第一行：
+对旧圣诞节经典“圣诞节十二天”的道歉，我给你一个 Raku 版本的第一行：
 
 在圣诞节的第一天，我真正的爱给了 pod 树上的 Perl 表格......
 
@@ -8,7 +8,7 @@
 
 === 背景
 
-我与 Perl 6 的第一次真正联系是在 2015 年春天，当时我决定检查它的状态，发现它已经准备好迎接黄金时段。在获得了该语言的一些经验之后，我开始在我可以提供帮助的地方贡献文档。我对文档的第一个贡献是清理其中没有很好呈现的表格。在我对本地主机上的 pod 表进行实验期间，我尝试了下表格：
+我与 Raku 的第一次真正联系是在 2015 年春天，当时我决定检查它的状态，发现它已经准备好迎接黄金时段。在获得了该语言的一些经验之后，我开始在我可以提供帮助的地方贡献文档。我对文档的第一个贡献是清理其中没有很好呈现的表格。在我对本地主机上的 pod 表进行实验期间，我尝试了下表格：
 
 ```
 =begin table
@@ -16,25 +16,25 @@
 =end table
 ```
 
-这导致 Perl 6 抛出一个丑陋的, LTA（非常搓）的异常消息：
+这导致 Raku 抛出一个丑陋的, LTA（非常搓）的异常消息：
 
 ```
 "===SORRY!=== Cannot iterate object with P6opaque representation"
 ```
 
-我解决了这个问题，但它让我感觉不爽，所以我开始调查 pod 和 tables 的内部。这导致我在 link:https://github.com/rakudo/rakudo/blob/master/src/Perl6/Pod.nqp[github.com/rakudo/src/Perl6/Pod.nqp] 中发现了问题的根源。
+我解决了这个问题，但它让我感觉不爽，所以我开始调查 pod 和 tables 的内部。这导致我在 link:https://github.com/rakudo/rakudo/blob/master/src/Raku/Pod.nqp[github.com/rakudo/src/Raku/Pod.nqp] 中发现了问题的根源。
 
 事实上，许多 pod 表格问题的真正问题最终都出现在该文件中。
 
 === Not Quite Perl (NQP)
 
-nqp 是用于构建 Rakudo Perl 6 编译器的中间语言。它的 git 仓库在link:https://github.com/perl6/nqp[这里]。本文的其余部分是关于修改 rakudo 编译器中的 nqp 代码，其仓库地址在link:https://github.com/rakudo/rakudo[这里]。 Rakudo 在link:http://rakudo.org/[这里]也有一个网站。
+nqp 是用于构建 Rakudo Raku 编译器的中间语言。它的 git 仓库在link:https://github.com/raku/nqp[这里]。本文的其余部分是关于修改 rakudo 编译器中的 nqp 代码，其仓库地址在link:https://github.com/rakudo/rakudo[这里]。 Rakudo 在link:http://rakudo.org/[这里]也有一个网站。
 
 在走得太远之前，我首先阅读有关 Rakudo 和 NQP 的可用信息：
 
 - Jonathan Worthington’s (JWs) 的幻灯片课程 link:http://edumentab.github.io/rakudo-and-nqp-internals-course/[Rakudo and NQP Internals]
-- link:https://github.com/perl6/nqp/blob/master/docs/ops.markdown[NQP opcodes]
-- link:https://github.com/perl6/nqp/blob/master/docs/built-ins.md[NQP built-in routines]
+- link:https://github.com/raku/nqp/blob/master/docs/ops.markdown[NQP opcodes]
+- link:https://github.com/raku/nqp/blob/master/docs/built-ins.md[NQP built-in routines]
 
 然后我开始通过编写和运行一些这样的小型 nqp 文件来练习nqp编码（文件 “hello.nqp”）：
 
@@ -53,7 +53,7 @@ Hello, world!
 
 === 进入战壕
 
-`rakudo/src/Perl6/Pod.nqp` 文件中包含的 `Perl6::Pod` 类的用途是将 pod grammar 匹配并将它们转换为 `rakudo/src/core/Pod.pm` 中的 Perl 6 pod 类定义，供 Perl 6 领地上的渲染者进一步处理。对于表格，表示以 Perl 6 文档设计中描述的任何合法 pod 格式表示的内容概要 S26，Perl 6 测试套件规范和 Perl 6 文档必须转换为 Perl 6 **Pod::Block::Table** 类如文件 link:https://github.com/rakudo/rakudo/blob/master/src/core/Pod.pm[rakudo/src/core/Pod.pm] 中所述，使用此格式的对象:
+`rakudo/src/Raku/Pod.nqp` 文件中包含的 `Raku::Pod` 类的用途是将 pod grammar 匹配并将它们转换为 `rakudo/src/core/Pod.pm` 中的 Raku pod 类定义，供 Raku 领地上的渲染者进一步处理。对于表格，表示以 Raku 文档设计中描述的任何合法 pod 格式表示的内容概要 S26，Raku 测试套件规范和 Raku 文档必须转换为 Raku **Pod::Block::Table** 类如文件 link:https://github.com/rakudo/rakudo/blob/master/src/core/Pod.pm[rakudo/src/core/Pod.pm] 中所述，使用此格式的对象:
 
 ```
 configuration information
@@ -69,7 +69,7 @@ M content lines, each with N cells
 
 ```
 got fork https://github.com/rakudo/rakudo.git
-got fork https://github.com/perl6/roast.git
+got fork https://github.com/raku/roast.git
 ```
 
 这导致了一个子目录rakudo和 roast 包含克隆仓库和 rakudo 和 roast github 帐户上的新复刻。在 rakudo 目录中，可以看到用于轻松创建 PR 的默认设置：
@@ -94,14 +94,14 @@ upstream    https://github.com/rakudo/rakudo.git (push)
 
 （请参阅 link:https://github.com/tbrowder/nqp-tools[https://github.com/tbrowder/nqp-tools] 上提到的所有脚本。）
 
-要完成本地工作环境，您需要安装一些本地模块，以便您必须更改路径并安装 zef 安装程序的本地副本。在 rakudo 目录中执行以下步骤（来自 link:https://perl6advent.wordpress.com/mentions/zoffix/[@Zoffix] 的建议）：
+要完成本地工作环境，您需要安装一些本地模块，以便您必须更改路径并安装 zef 安装程序的本地副本。在 rakudo 目录中执行以下步骤（来自 link:https://rakuadvent.wordpress.com/mentions/zoffix/[@Zoffix] 的建议）：
 
 ```shell
 git clone https://github.com/ugexe/zef
 export PATH=`pwd`/install/bin:$PATH
-cd zef; perl6 -Ilib bin/zef install .
+cd zef; raku -Ilib bin/zef install .
 cd ..
-export PATH=`pwd`/install/share/perl6/site/bin:$PATH
+export PATH=`pwd`/install/share/raku/site/bin:$PATH
 zef install Inline::Perl5
 ```
 
@@ -121,9 +121,9 @@ make
 make install
 ```
 
-`make install` 步骤非常关键，否则，在我们设置的本地环境中，将不会找到新的 Perl 6 可执行文件。
+`make install` 步骤非常关键，否则，在我们设置的本地环境中，将不会找到新的 Raku 可执行文件。
 
-调试于我来说很费力，每次重建需要大约三分钟。调试器（perl6-debug-m）会非常有用，但我无法安装所需的 `Debbugger::UI::CommandLine` 模块，因此它可以被本地安装的 `perl6-debug-m` 识别。我使用的主要方法是插入print 语句，并使用 perl6 的 `--ll-exception` 选项。值得注意的是，这位作者是一位 Perl 6 新手，犯了很多错误，并且并不总是记得修复，因此有了这篇文章。 （注意我可能会使用调试工具，但在我开始的时候，我没有要求帮助，也没有提供上面提供的建议。）
+调试于我来说很费力，每次重建需要大约三分钟。调试器（raku-debug-m）会非常有用，但我无法安装所需的 `Debbugger::UI::CommandLine` 模块，因此它可以被本地安装的 `raku-debug-m` 识别。我使用的主要方法是插入print 语句，并使用 raku 的 `--ll-exception` 选项。值得注意的是，这位作者是一位 Raku 新手，犯了很多错误，并且并不总是记得修复，因此有了这篇文章。 （注意我可能会使用调试工具，但在我开始的时候，我没有要求帮助，也没有提供上面提供的建议。）
 
 
 === 测试
@@ -134,7 +134,7 @@ make install
 
 === 文档
 
-我尝试将我的修复程序保留在最新的 link:https://docs.perl6.org/language/tables[Perl 6 pod 表格文档]中。
+我尝试将我的修复程序保留在最新的 link:https://docs.raku.org/language/tables[Raku pod 表格文档]中。
 
 === NQP 经验教训
 
@@ -145,36 +145,36 @@ make install
 
 === 成功！
 
-现在我已经接受并合并了两个主要的Perl 6 POD（和 toast）PR，并且我正在研究一个更“容易”的，我将在本周完成。 这些 PR 是：
+现在我已经接受并合并了两个主要的Raku POD（和 toast）PR，并且我正在研究一个更“容易”的，我将在本周完成。 这些 PR 是：
 
 1.Rakudo PR＃1240
-这个 link:https://github.com/rakudo/rakudo/pull/1240[Rakudo PR]  为 RT＃124403，＃128221，＃132341，＃13248和＃129862提供了修复程序。它伴随着 toast link:https://github.com/perl6/roast/pull/353[PR＃353]。
+这个 link:https://github.com/rakudo/rakudo/pull/1240[Rakudo PR]  为 RT＃124403，＃128221，＃132341，＃13248和＃129862提供了修复程序。它伴随着 toast link:https://github.com/raku/roast/pull/353[PR＃353]。
 
-这个 PR 允许上面的问题表格被正确渲染。它还添加了有问题的表的警告，添加了 Rakudo 环境变量RAKUDO_POD6_TABLE_DEBUG 以帮助用户调试表（请参阅文档，link:https://docs.perl6.org/programs/00-running#Environment_Variables[用户调试]），并允许具有空列的短行正确呈现。
+这个 PR 允许上面的问题表格被正确渲染。它还添加了有问题的表的警告，添加了 Rakudo 环境变量RAKUDO_POD6_TABLE_DEBUG 以帮助用户调试表（请参阅文档，link:https://docs.raku.org/programs/00-running#Environment_Variables[用户调试]），并允许具有空列的短行正确呈现。
 
 2.Rakudo PR＃1287
-这个 link:https://github.com/rakudo/rakudo/pull/1287[Rakudo PR] 为 Rakudo repo 问题＃1282提供了一个解决方案。它伴随着 roast link:https://github.com/perl6/roast/pull/361[PR＃361]。 （请注意，roast PR＃361 尚未合并。）
+这个 link:https://github.com/rakudo/rakudo/pull/1287[Rakudo PR] 为 Rakudo repo 问题＃1282提供了一个解决方案。它伴随着 roast link:https://github.com/raku/roast/pull/361[PR＃361]。 （请注意，roast PR＃361 尚未合并。）
 
 这个 PR 允许表格视觉列分隔符（'|'）和（'+'）作为单元格数据通过在 pod 源中转义它们。
 
 === 总结
 
-- Perl 6 pod相对于Perl 5来说是一个很大的改进，但它还没有完全实现。
+- Raku pod相对于Perl 5来说是一个很大的改进，但它还没有完全实现。
 - 在 Rakudo Perl的内部工作是有益的（并且很有趣），但是准备让你的手变脏！
-- Perl 6 社区是一个很好的团队。
-- 我喜欢 Rakudo Perl 6。
+- Raku 社区是一个很好的团队。
+- 我喜欢 Rakudo Raku。
 
 圣诞快乐，Hacking 快乐！
 
 === 参考
 
-1. JWs Perl 6 debugger link:https://perl6advent.wordpress.com/2012/12/05/a-perl-6-debugger/[Advent article]
+1. JWs Raku debugger link:https://rakuadvent.wordpress.com/2012/12/05/a-perl-6-debugger/[Advent article]
 2. JWs Rakudo debugger module link:https://github.com/jnthn/rakudo-debugger[Debugger::UI::CommandLine]
 3. JWs grammar debugger module link:https://github.com/jnthn/grammar-debugger[Grammar::Debugger]
-4. link:https://github.com/perl6/roast/blob/master/README.md[Testing Rakudo]
-5. link:https://github.com/perl6/roast/blob/master/CONTRIBUTING.md[Contributing to roast]
+4. link:https://github.com/raku/roast/blob/master/README.md[Testing Rakudo]
+5. link:https://github.com/raku/roast/blob/master/CONTRIBUTING.md[Contributing to roast]
 6. link:https://help.github.com/categories/collaborating-with-issues-and-pull-requests/[Github guide to pull requests (PRs)]
-7. link:https://docs.perl6.org/[Perl 6 documentation (*docs*)]
+7. link:https://docs.raku.org/[Raku documentation (*docs*)]
 
 
 
@@ -182,12 +182,12 @@ make install
 
 POD 工具
 
-- perl6 –doc=MODULE # where ‘MODULE’ is ‘HTML’, ‘Text’, 或其它合适的模块
+- raku –doc=MODULE # where ‘MODULE’ is ‘HTML’, ‘Text’, 或其它合适的模块
 - p6doc
-- perl6 –ll-exception
+- raku –ll-exception
 
-=== 主要的 Perl 6 POD 渲染器
+=== 主要的 Raku POD 渲染器
 
 - Pod::To::Text (part of the rakudo core)
-- link:https://github.com/perl6/Pod-To-HTML[Pod::To::HTML]
+- link:https://github.com/raku/Pod-To-HTML[Pod::To::HTML]
 

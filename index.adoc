@@ -8,7 +8,7 @@
 :source-language: perl6
 :pygments-linenums-mode: table
 :toc: left
-:doctype: book
+:doctype:
 :lang: zh
 :sectnums:
 

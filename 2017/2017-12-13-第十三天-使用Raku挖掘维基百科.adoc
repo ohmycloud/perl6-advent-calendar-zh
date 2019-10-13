@@ -1,10 +1,10 @@
-== 第十三天 - 使用 Perl 6 挖掘维基百科
+== 第十三天 - 使用 Raku 挖掘维基百科
 
 === 介绍
 
 大家好!
 
-今天，让我介绍一下如何用 Perl 6 挖掘维基百科的 Infobox。
+今天，让我介绍一下如何用 Raku 挖掘维基百科的 Infobox。
 
 维基百科信息框在自然语言处理中扮演着非常重要的角色，并且有许多应用程序可以利用维基百科信息框：
 
@@ -29,7 +29,7 @@
  - **make** 准备一个对象用于返回当 made calls on it。
  - **made** 在它的调用者身上调用并返回准备好的对象。
 
-欲了解更多信息, 请查看: link:https://docs.perl6.org/language/grammars[https://docs.perl6.org/language/grammars]
+欲了解更多信息, 请查看: link:https://docs.raku.org/language/grammars[https://docs.raku.org/language/grammars]
 
 ==== 什么是 Infobox?
 
@@ -39,21 +39,21 @@
 
 理解信息框的一个简单方法是使用一个真实的例子：
 
-!link:https://perl6advent.files.wordpress.com/2017/11/perl6infobox.png[img]
+!link:https://rakuadvent.files.wordpress.com/2017/11/rakuinfobox.png[img]
 
-你可以看到，信息框会在页面的右上方显示页面主题的属性-值对儿。例如, 在这个例子中, 它说 Perl 6 的设计者 (ja: 設計者)是 Larry Wall(ja: ラリー・ウォール)。
+你可以看到，信息框会在页面的右上方显示页面主题的属性-值对儿。例如, 在这个例子中, 它说 Raku 的设计者 (ja: 設計者)是 Larry Wall(ja: ラリー・ウォール)。
 
 欲了解更多信息, 请查看: link:https://en.wikipedia.org/wiki/Help:Infobox[https://en.wikipedia.org/wiki/Help:Infobox]
 
-==== 第一个例子: Perl 6
+==== 第一个例子: Raku
 
 首先要说的是，我将使用日文维基百科而不是英文维基百科演示解析技术。
 
 主要原因是解析日文维基百科是我的$ dayjob :)
 
-第二个原因是我想要展示 Perl 6 如何轻松地处理 Unicode 字符串。
+第二个原因是我想要展示 Raku 如何轻松地处理 Unicode 字符串。
 
-然后，让我们开始解析 link:https://ja.wikipedia.org/wiki/Perl_6[Perl 6 文章]中的信息框！
+然后，让我们开始解析 link:https://ja.wikipedia.org/wiki/Perl_6[Raku 文章]中的信息框！
 
 用 wiki 标记写的文章的代码是：
 
@@ -61,7 +61,7 @@
 {{Comp-stub}}
 
 {{Infobox プログラミング言語
-|名前             = Perl 6
+|名前             = Raku
 |ロゴ             = [[Image:Camelia.svg|250px]]
 |パラダイム       = [[マルチパラダイムプログラミング言語|マルチパラダイム]]
 |登場時期         = [[2015年]]12月25日
@@ -71,21 +71,21 @@
 |処理系           = [[Rakudo]]
 |影響を受けた言語 = [[Perl|Perl 5]], [[Smalltalk]], [[Haskell]], [[Ruby]]
 |ライセンス       = [[Artistic License 2]]
-|ウェブサイト     = [https://perl6.org/ Perl6.org]
+|ウェブサイト     = [https://raku.org/ Raku.org]
 }}
 {{プログラミング言語}}
 
-'''Perl 6'''（パールシックス）は、[[ラリー・ウォール]]により設計された[[オブジェクト指向]][[スクリプト言語]]である。
+'''Raku'''（パールシックス）は、[[ラリー・ウォール]]により設計された[[オブジェクト指向]][[スクリプト言語]]である。
 
-Perl 6は、[[2000年]]に[[Perl]]の次期メジャーバージョンとして設計が始められ、[[2015年]]12月25日に公式のPerl 6正式安定版がリリースされた。しかし、言語仕様は現在のPerl (Perl 5)と互換性がなく、既存のPerl 5のソフトウェアをPerl 6用に「アップグレ
-ード」するのは極めて困難である。したがって現在はPerl 5とPerl 6は別の言語であると考えられており、Perl 6はPerl 5の次期バージョンではないとされている。換言すれば、Perl 6はPerl 5から移行対象とはみなされていない。
+Rakuは、[[2000年]]に[[Perl]]の次期メジャーバージョンとして設計が始められ、[[2015年]]12月25日に公式のRaku正式安定版がリリースされた。しかし、言語仕様は現在のPerl (Perl 5)と互換性がなく、既存のPerl 5のソフトウェアをRaku用に「アップグレ
+ード」するのは極めて困難である。したがって現在はPerl 5とRakuは別の言語であると考えられており、RakuはPerl 5の次期バージョンではないとされている。換言すれば、RakuはPerl 5から移行対象とはみなされていない。
 ```
 
 代码有三个有问题的部分：
 
-1. 信息框块后面有多余的元素，例如模板 `{{プログラミング言語}}` 和以 `'''Perl 6'''` 开头的主句。
+1. 信息框块后面有多余的元素，例如模板 `{{プログラミング言語}}` 和以 `'''Raku'''` 开头的主句。
 2. 我们必须区分三种类型的 token: 锚点文本（例如: `[[Rakudo]]`）, 原始文本（例如： `Rakudo Star 2016.04`）, 网站链接
-（例如： `[https://perl6.org/ Perl6.org]`）。
+（例如： `[https://raku.org/ Raku.org]`）。
 3. 信息框不从文章的顶部位置开始。在这个例子中, `{{Comb-stub}}` 在文章的顶部。
 
 好的，接下来我将演示如何按照 Grammar，Actions，Caller（即调用 Grammar 和 Actions 的代码部分）的顺序来解决上述问题。
@@ -94,7 +94,7 @@ Perl 6は、[[2000年]]に[[Perl]]の次期メジャーバージョンとして�
 
 解析信息框的 Grammar 代码如下:
 
-```perl6
+```raku
 grammar Infobox::Grammar {
     token TOP { <infobox> .+ } # (#1)
     token infobox { '{{Infobox' <.ws> <name> \n <propertylist> '}}' }
@@ -141,7 +141,7 @@ grammar Infobox::Grammar {
 
 Actions 的代码如下:
 
-```perl6
+```raku
 class Infobox::Actions {
     method TOP($/) { make $<infobox>.made }
     method infobox($/) {
@@ -188,7 +188,7 @@ class Infobox::Actions {
 
 Caller 部分的代码如下:
 
-```perl6
+```raku
 my @lines = $*IN.lines;
 while @lines {
     my $chunk = @lines.join("\n"); # (#1)
@@ -220,11 +220,11 @@ while @lines {
 你准备好了吗？
 是时候运行第一个例子了！
 
-```perl6
-$ perl6 parser.p6 < perl6.txt
+```raku
+$ raku parser.p6 < raku.txt
 プログラミング言語
 名前
-{anchortext => [], rawtext => [Perl 6], weblink => []}
+{anchortext => [], rawtext => [Raku], weblink => []}
 ロゴ
 {anchortext => [[[Image:Camelia.svg|250px]]], rawtext => [], weblink => []}
 パラダイム
@@ -244,7 +244,7 @@ $ perl6 parser.p6 < perl6.txt
 ライセンス
 {anchortext => [[[Artistic License 2]]], rawtext => [], weblink => []}
 ウェブサイト
-{anchortext => [], rawtext => [], weblink => [[https://perl6.org/ Perl6.org]]}
+{anchortext => [], rawtext => [], weblink => [[https://raku.org/ Raku.org]]}
 ```
 
 我们看到的例子可能对您来说太简单了。让我们挑战更难的！
@@ -343,7 +343,7 @@ Caller 的代码与前一个相同。
 
 Grammar 代码如下:
 
-```perl6
+```raku
 grammar Infobox::Grammar {
     token TOP { <infobox> .+ }
     token infobox { '{{Infobox' <.ws> <name> \n <propertylist> '}}' }
@@ -409,7 +409,7 @@ grammar Infobox::Grammar {
 ```
 
 - 问题 1.1 的解决方法：
- - 创建 token *value-content-list-nl*，它是 value-content-list token 的换行符分隔版本。使用link:https://docs.perl6.org/language/regexes#Modified_quantifier:_%,_%%[修改量词] `％` 来表示这种序列是很有用的。 （＃1）
+ - 创建 token *value-content-list-nl*，它是 value-content-list token 的换行符分隔版本。使用link:https://docs.raku.org/language/regexes#Modified_quantifier:_%,_%%[修改量词] `％` 来表示这种序列是很有用的。 （＃1）
  - 创建 token 模板。在这一个中，定义一个代表 link:https://en.wikipedia.org/wiki/Template:Plainlist[Plainlist 模板] 的序列。 （＃2）
 - 问题 1.2 的解决方法：
  - 使 token 模板能够调用 token value-content-list。此修改触发递归调用并捕获嵌套结构，因为 token value-content-list 包含 token 模板。 （＃3）
@@ -425,7 +425,7 @@ grammar Infobox::Grammar {
 
 Action 代码如下:
 
-```perl6
+```raku
 class Infobox::Actions {
     method TOP($/) { make $<infobox>.made }
     method infobox($/) {
@@ -475,7 +475,7 @@ class Infobox::Actions {
 该跑了！
 
 ```
-$ perl6 parser.p6 < einstein.txt
+$ raku parser.p6 < einstein.txt
 Scientist
 name
 {anchortext => [], rawtext => [{body => アルベルト・アインシュタイン, from => 27, to => 42}], template => [], weblink => []}
@@ -582,7 +582,7 @@ Nil
 
 ==== 结论
 
-我演示了信息框的解析技术。如果您有机会将 Wikipedia 用作 NLP 的资源，我强烈建议您创建自己的解析器。它不仅会加深你对 Perl 6 的理解而且还会加深关于维基百科知识的理解。
+我演示了信息框的解析技术。如果您有机会将 Wikipedia 用作 NLP 的资源，我强烈建议您创建自己的解析器。它不仅会加深你对 Raku 的理解而且还会加深关于维基百科知识的理解。
 
 再见！
 

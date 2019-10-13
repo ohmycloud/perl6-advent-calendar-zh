@@ -1,10 +1,10 @@
-== 第十四天 - 使用 Perl 6 设计(小)航天器
+== 第十四天 - 使用 Raku 设计(小)航天器
 
 === 寻找共同点
 
 大家好！
 
-那些日子我花了一些时间在基础部件上工作，揭示了可能的惊喜，Perl 6 的 link:https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol[LDAP（轻量级目录访问协议）]实现。
+那些日子我花了一些时间在基础部件上工作，揭示了可能的惊喜，Raku 的 link:https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol[LDAP（轻量级目录访问协议）]实现。
 
 然而，现在谈论这个还为时尚早，所以我现在将有一些神秘的封面覆盖这个话题，因为我们有另一个 - 宇宙飞船！
 
@@ -12,7 +12,7 @@
 
 通过这种方式，您可以轻松地在应用程序中获得跨平台类型。编码器和解码器可以自动生成，不仅针对某些指定的编码格式，而且针对整个范围的二进制（例如 `BER`，`PER`和其他）和文本（例如`SOAP`）编码格式。
 
-因此，为了完成工作，我必须至少实现 `ASN.1`Perl 6中的一些子集- 不是完整的规范，这很大，只关注LDAP规范中使用的功能。
+因此，为了完成工作，我必须至少实现 `ASN.1`Raku中的一些子集- 不是完整的规范，这很大，只关注LDAP规范中使用的功能。
 
 “这听起来很有趣，但我们的宇宙飞船在哪里！？”，你可能会问。事实证明，这种 `Rocket` 类型是您在 link:http://asn1-playground.oss.com/[ASN.1 Playground] 网站上看到的第一件事，它让您可以免费访问 `ASN.1`编译器，它可以作为参考！
 
@@ -90,17 +90,17 @@ END
 
 === 逐步建设。问题答案。
 
-那么，我们可以用 Perl 6 中的所有功能做什么呢？虽然编译器可能很有趣，但是可以通过可扩展的方式编译成 Perl 6，并且包含了奇特的功能？必须有一些更简单的东西。
+那么，我们可以用 Raku 中的所有功能做什么呢？虽然编译器可能很有趣，但是可以通过可扩展的方式编译成 Raku，并且包含了奇特的功能？必须有一些更简单的东西。
 
 比方说，我们有一个适用于航天器的脚本。当然，我们需要一个类型来表示一个，特别是一个类，让我们称之为 `Rocket`：
 
-```perl6
+```raku
 class  Rocket {}
 ```
 
 当然，我们想知道一些有关它的数据：
 
-```perl6
+```raku
 class Rocket {
     has $.name;
     has $.message is default("Hello World");
@@ -111,7 +111,7 @@ class Rocket {
 ```
 如果我们必须使我们的 `Rocket` 定义更明确，那么我们指定一些类型：
 
-```perl6
+```raku
 enum Fuel <Solid Liquid Gas>;
 
 class Rocket {
@@ -140,7 +140,7 @@ class Rocket {
 
 > 我们怎么知道这 `$.speed` 是可选的？
 
-我们只是应用它的特征！link:https://docs.perl6.org/language/traits[Traits] 允许我们在代码部分上执行自定义代码，特别是 `Attributes`。例如，虚构的API可以是这样的：`has $.speed is optional`。
+我们只是应用它的特征！link:https://docs.raku.org/language/traits[Traits] 允许我们在代码部分上执行自定义代码，特别是 `Attributes`。例如，虚构的API可以是这样的：`has $.speed is optional`。
 
 > 我们怎么知道 $.speed 是多少？
 
@@ -152,11 +152,11 @@ class Rocket {
 
 > 我们如何指定字段的默认值？
 
-虽然 Perl 6 已经具有内置 `is default` 特性，但对我们来说不好的是我们无法“很好地”检测到它。因此，我们必须引入另一个自定义特征，以满足我们的目的并应用内置特征：`has Str $.message is default-value("Hello World");`
+虽然 Raku 已经具有内置 `is default` 特性，但对我们来说不好的是我们无法“很好地”检测到它。因此，我们必须引入另一个自定义特征，以满足我们的目的并应用内置特征：`has Str $.message is default-value("Hello World");`
 
 让我们在一个包中回答所有这些问题：
 
-```perl6
+```raku
 role ASNSequence { #`[ Elves Special Magic Truly Happens Here ] }
 
 role ASNChoice { #`[ And even here ]  }
@@ -181,7 +181,7 @@ class Rocket does ASNSequence {
 
 值可能类似于：
 
-```perl6
+```raku
 my $rocket = Rocket.new(
     name => 'Falcon',
     fuel => Solid,

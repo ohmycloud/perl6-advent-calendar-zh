@@ -1,10 +1,10 @@
-== 第十五天 - 使用 Perl 6 构建(小型)航天器
+== 第十五天 - 使用 Raku 构建(小型)航天器
 
 === 炫耀长耳朵
 
-在link:https://perl6advent.wordpress.com/2018/12/14/designing-a-space-ship-with-perl-6/[上一篇文章]中，我们遇到了某种特殊精灵的魔力：
+在link:https://rakuadvent.wordpress.com/2018/12/14/designing-a-space-ship-with-perl-6/[上一篇文章]中，我们遇到了某种特殊精灵的魔力：
 
-```perl6
+```raku
 enum Fuel <Solid Liquid Gas>;
 
 class SpeedChoice does ASNChoice {
@@ -47,7 +47,7 @@ say ASN::Parser.new(:type(Rocket)).parse($rocket-bytes) eqv $rocket; # Certainly
 
 有些事情是不言而喻的（或者对于我来说，用了无数个小时来看精灵如何玩魔法）
 
-```perl6
+```raku
 # 1
 role ASNSequence {
     # every descendant has to fulfill this important vow!
@@ -88,11 +88,11 @@ multi trait_mod:(Attribute $attr, :$UTF8String) is export { $attr does ASN::Type
 
 === 进步，进化，序列化！
 
-通过一系列规则可以做什么来序列化事物？鉴于 `Basic Encoding Rules` 对不同类型的值有不同的处理方式（如果你思考一下就不会觉得太奇怪！）以及一个类型可以嵌套在另一个类型中的事实，更不用说是递归的了？我觉得它可能不太难实现。 Perl 6 的 multi-dispatch 正派上用场！
+通过一系列规则可以做什么来序列化事物？鉴于 `Basic Encoding Rules` 对不同类型的值有不同的处理方式（如果你思考一下就不会觉得太奇怪！）以及一个类型可以嵌套在另一个类型中的事实，更不用说是递归的了？我觉得它可能不太难实现。 Raku 的 multi-dispatch 正派上用场！
 
 一般来说，事情如下：
 
-```perl6
+```raku
 class ASN::Serializer {
     ...
 
@@ -127,25 +127,25 @@ class ASN::Serializer {
 
 假设有人知道正在解析的确切类型：
 
-```perl6
+```raku
 my $parser = ASN::Parser.new(type => Rocket);
 say $parser.parse($rocket-ber); # Yes, here goes our rocket!
 ```
 
 如果要解析此 `Buf` 内容，则必须指定其类型，就像下面这样：
 
-```perl6
+```raku
 multi method parse(Blob $input, ...) {
     ...
     self.parse($input, $!type, ...);
 }
 ```
 
-这个方法不知道它所解析的类型，但它调用了它的朋友：`parse($input, SomeCoolType, ...)` 超出了传递的内容和它可以得到的类型。如果知道了类型，多重分派将很乐意为我们提供必要的解析实现。对于简单的类型。对于复杂的类型。对于“特殊”类型。有了 Perl 6，任何一天都会发生便利的奇迹！
+这个方法不知道它所解析的类型，但它调用了它的朋友：`parse($input, SomeCoolType, ...)` 超出了传递的内容和它可以得到的类型。如果知道了类型，多重分派将很乐意为我们提供必要的解析实现。对于简单的类型。对于复杂的类型。对于“特殊”类型。有了 Raku，任何一天都会发生便利的奇迹！
 
 让我们再看一眼：
 
-```perl6
+```raku
 # Details and basic indentation are omitted for clarity
 
 ...
@@ -166,14 +166,14 @@ multi method parse(Buf $input is rw, ASNSequence $type, :$debug, :$mode) {
 
 事实上，更简单的类型更简单，就像这样：
 
-```perl6
+```raku
 multi method parse(Buf $input is rw, $enum-type where $enum-type.HOW ~~ Metamodel::EnumHOW, :$debug, :$mode) {
     say "Parsing `$input[0]` out of $input.perl()" if $debug;
     $enum-type($input[0]);
 }
 ```
 
-但是，必须保持规则，以表明错误，并做各种“无聊”的事情，而不是“必要”的事情。虽然 Perl 6 允许我们在这个区域使用一些不错的技巧，但在圣诞节前看它并不是太感兴趣。
+但是，必须保持规则，以表明错误，并做各种“无聊”的事情，而不是“必要”的事情。虽然 Raku 允许我们在这个区域使用一些不错的技巧，但在圣诞节前看它并不是太感兴趣。
 
 === What o’clock? Supply o’clock!
 
@@ -183,7 +183,7 @@ multi method parse(Buf $input is rw, $enum-type where $enum-type.HOW ~~ Metamode
 
 `ASN.1` 解析器应该是增量的。更重要的是，它必须是非常明确的，因为人们可以使用未知长度的值。可以做些什么来快速使我们的解析器增量？我们快点做吧：
 
-```perl6
+```raku
 class ASN::Parser::Async {
     has Supplier::Preserving $!out = Supplier::Preserving.new;
     has Supply $!values = $!out.Supply;
@@ -220,7 +220,7 @@ class ASN::Parser::Async {
 
 它可以像这样使用：
 
-```perl6
+```raku
 my $parser = ASN::Parser::Async.new(type => Rocket);
 
 $parser.values.tap({ say "I get a nice thing!"; });

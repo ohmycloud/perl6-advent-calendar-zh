@@ -1,6 +1,6 @@
-== link:https://perl6advent.wordpress.com/2017/12/19/day-19-language-independent-validation-rules-livr-for-perl6/[第十九天-Language Independent Validation Rules (LIVR) for Perl6]
+== link:https://rakuadvent.wordpress.com/2017/12/19/day-19-language-independent-validation-rules-livr-for-raku/[第十九天-Language Independent Validation Rules (LIVR) for Raku]
 
-我刚刚将 LIVR link:https://modules.perl6.org/dist/LIVR:cpan:KOORCHIK[移植]到了 Perl6。在 Perl6 中编写代码非常有趣。而且，LIVR 的测试套件让我能够在 Perl6 的 Email::Valid 模块中发现 bug，而在 Rakudo 中则发现另一个 bug。更有趣的是，不仅仅实现了一个模块，而且还帮助其他开发人员进行了一些测试:)
+我刚刚将 LIVR link:https://modules.raku.org/dist/LIVR:cpan:KOORCHIK[移植]到了 Raku。在 Raku 中编写代码非常有趣。而且，LIVR 的测试套件让我能够在 Raku 的 Email::Valid 模块中发现 bug，而在 Rakudo 中则发现另一个 bug。更有趣的是，不仅仅实现了一个模块，而且还帮助其他开发人员进行了一些测试:)
 
 什么是 LIVR？ LIVR 代表“语言独立验证规则”。所以，它就像 “link:https://mustache.github.io/[Mustache]” ，但在验证的世界。所以，LIVR 由以下几部分组成：
 
@@ -11,7 +11,7 @@
 LIVR 有如下语言的实现：
 
 - link:https://github.com/koorchik/Validator-LIVR[Perl 5 (LIVR 2.0)] available at link:https://metacpan.org/pod/Validator::LIVR[CPAN], 维护者 link:https://github.com/koorchik[@koorchik]
-- link:https://github.com/koorchik/perl6-livr[Perl 6 (LIVR 2.0)] available at link:https://modules.perl6.org/dist/LIVR:cpan:KOORCHIK[CPAN], 维护者 link:https://github.com/koorchik[@koorchik]
+- link:https://github.com/koorchik/raku-livr[Raku (LIVR 2.0)] available at link:https://modules.raku.org/dist/LIVR:cpan:KOORCHIK[CPAN], 维护者 link:https://github.com/koorchik[@koorchik]
 - link:https://github.com/koorchik/js-validator-livr[JavaScript (LIVR 2.0)] available at link:https://www.npmjs.com/package/livr[npm], 维护者 link:https://github.com/koorchik[@koorchik]
 - link:https://github.com/WebbyLab/php-validator-livr[PHP (LIVR 2.0)] available at link:https://packagist.org/packages/validator/livr[packagist], 维护者 link:https://github.com/WebbyLab[@WebbyLab]
 - link:https://github.com/asholok/python-validator-livr[Python (LIVR 2.0)] available at link:https://pypi.python.org/pypi/LIVR[pypi], 维护者 link:https://github.com/asholok[@asholok]
@@ -65,19 +65,19 @@ LIVR 有如下语言的实现：
 
 这是基本的介绍。更多细节在我上面提到的文章中。
 
-=== LIVR和Perl6
+=== LIVR和Raku
 
-让我们玩得开心，玩一段代码。我将通过几个例子，并在每个例子后提供一些内部细节。所有示例的源代码都可以在 link:https://github.com/koorchik/perl6-livr-advent-calendar-post/tree/master/examples[GitHub] 上找到
+让我们玩得开心，玩一段代码。我将通过几个例子，并在每个例子后提供一些内部细节。所有示例的源代码都可以在 link:https://github.com/koorchik/raku-livr-advent-calendar-post/tree/master/examples[GitHub] 上找到
 
-首先，从 CPAN 安装 Perl 6 的 LIVR 模块
+首先，从 CPAN 安装 Raku 的 LIVR 模块
 
-```perl6
+```raku
 zef install LIVR
 ```
 
 **示例1：注册数据验证**
 
-```perl6
+```raku
 use LIVR;
 
 # Automatically trim all values before validation
@@ -117,7 +117,7 @@ if my $valid-data = $validator.validate($user-data) {
 
 例如：
 
-```perl6
+```raku
 { 
     name  => { required => [] },
     phone => { max_length => [10] }
@@ -126,7 +126,7 @@ if my $valid-data = $validator.validate($user-data) {
 
 但如果只有一个参数，则可以使用较短的形式：
 
-```perl6
+```raku
 { 
     phone => { max_length => 10 }
 }
@@ -134,7 +134,7 @@ if my $valid-data = $validator.validate($user-data) {
 
 如果没有参数，则可以将规则的名称作为字符串传递：
 
-```perl6
+```raku
 { 
     name => 'required'
 }
@@ -142,7 +142,7 @@ if my $valid-data = $validator.validate($user-data) {
 
 您可以在数组中给字段传递一个规则列表：
 
-```perl6
+```raku
 { 
     name => [ 'required', { max_length => 10 } ]
 }
@@ -156,7 +156,7 @@ if my $valid-data = $validator.validate($user-data) {
 
 例2：分层数据结构的验证
 
-```perl6
+```raku
 use LIVR;
 
 my $validator = LIVR::Validator.new(livr-rules => {
@@ -196,7 +196,7 @@ if my $valid-data = $validator.validate($user-data) {
 
 ==== 别名
 
-```perl6
+```raku
 use LIVR;
 
 LIVR::Validator.register-aliased-default-rule({
@@ -235,7 +235,7 @@ if my $valid-data = $validator.validate($user-data) {
 
 如果你愿意，你可以只为你的验证器实例注册别名：
 
-```perl6
+```raku
 use LIVR;
 
 my $validator = LIVR::Validator.new(livr-rules => {
@@ -263,7 +263,7 @@ $validator.register-aliased-rule({
 
 用这种方法，你可以创建某种管道。
 
-```perl6
+```raku
 use LIVR;
 
 my $validator = LIVR::Validator.new(livr-rules => {
@@ -292,7 +292,7 @@ $output-data.say;
 
 这里是'strong_password'的例子：
 
-```perl6
+```raku
 use LIVR;
 
 my $validator = LIVR::Validator.new(livr-rules => {
@@ -304,7 +304,7 @@ $validator.register-rules( 'strong_password' =>  sub (@rule-args, %builders) {
     # to allow you create new validator with all supported rules
     # my $validator = LIVR::Validator.new(livr-rules => $livr).register-rules(%builders).prepare();
     # See "nested_object" rule implementation for example
-    # https://github.com/koorchik/perl6-livr/blob/master/lib/LIVR/Rules/Meta.pm6#L5
+    # https://github.com/koorchik/raku-livr/blob/master/lib/LIVR/Rules/Meta.pm6#L5
 
     # Return closure that will take value and return error
     return sub ($value, $all-values, $output is rw) {
@@ -326,12 +326,12 @@ $validator.register-rules( 'strong_password' =>  sub (@rule-args, %builders) {
 
 查看更多示例的现有规则实现:
 
-- link:https://github.com/koorchik/perl6-livr/blob/master/lib/LIVR/Rules/Common.pm6[Common rules]
-- link:https://github.com/koorchik/perl6-livr/blob/master/lib/LIVR/Rules/Numeric.pm6[Numeric rules]
-- link:https://github.com/koorchik/perl6-livr/blob/master/lib/LIVR/Rules/String.pm6[String rules]
-- link:https://github.com/koorchik/perl6-livr/blob/master/lib/LIVR/Rules/Special.pm6[Special rules]
-- link:https://github.com/koorchik/perl6-livr/blob/master/lib/LIVR/Rules/Modifiers.pm6[Modifiers rules]
-- link:https://github.com/koorchik/perl6-livr/blob/master/lib/LIVR/Rules/Meta.pm6[Meta rules]
+- link:https://github.com/koorchik/raku-livr/blob/master/lib/LIVR/Rules/Common.pm6[Common rules]
+- link:https://github.com/koorchik/raku-livr/blob/master/lib/LIVR/Rules/Numeric.pm6[Numeric rules]
+- link:https://github.com/koorchik/raku-livr/blob/master/lib/LIVR/Rules/String.pm6[String rules]
+- link:https://github.com/koorchik/raku-livr/blob/master/lib/LIVR/Rules/Special.pm6[Special rules]
+- link:https://github.com/koorchik/raku-livr/blob/master/lib/LIVR/Rules/Modifiers.pm6[Modifiers rules]
+- link:https://github.com/koorchik/raku-livr/blob/master/lib/LIVR/Rules/Meta.pm6[Meta rules]
 
 **示例5：Web 应用程序**
 
@@ -357,7 +357,7 @@ LIVR 适用于 REST API。通常，很多 REST API 在返回可理解的错误�
 
 您需要为其安装 Bailador：
 
-```perl6
+```raku
 zef install Bailador
 ```
 
@@ -370,7 +370,7 @@ zef install Bailador
 
 服务使用示例：
 
-```perl6
+```raku
 my %CONTEXT = (storage => my @STORAGE);
 
 my %note = title => 'Note1', text => 'Note text';
@@ -388,7 +388,7 @@ my $list = Service::Notes::Create.new(
 
 以下是创建笔记服务的源代码：
 
-```perl6
+```raku
 use Service::Base;
 my $LAST_ID = 0;
 class Service::Notes::Create is Service::Base {
@@ -408,7 +408,7 @@ class Service::Notes::Create is Service::Base {
 
 和 Service::Base 类：
 
-```perl6
+```raku
 use LIVR;
 LIVR::Validator.default-auto-trim(True);
 
@@ -445,35 +445,35 @@ class Service::Base {
 - 在调用“execute”之前可以检查权限。
 - 可以执行额外的工作，如缓存验证器对象等。
 
-这是link:https://github.com/koorchik/perl6-livr-advent-calendar-post/tree/master/examples/example5-restapi[完整的工作示例]。
+这是link:https://github.com/koorchik/raku-livr-advent-calendar-post/tree/master/examples/example5-restapi[完整的工作示例]。
 
 运行应用程序：
 
-```perl6
-perl6 app.pl6
+```raku
+raku app.pl6
 ```
 
 创建一个 note：
 
-```perl6
+```raku
 curl -H "Content-Type: application/json" -X POST -d '{"title":"New Note","text":"Some text here"}' http://localhost:3000/notes
 ```
 
 检查验证：
 
-```perl6
+```raku
 curl -H "Content-Type: application/json" -X POST -d '{"title":"","text":""}' http://localhost:3000/notes
 ```
 
 获取notes列表：
 
-```perl6
+```raku
 curl http://localhost:3000/notes
 ```
 
 === LIVR 链接
 
-- link:https://github.com/koorchik/perl6-livr-advent-calendar-post/tree/master/examples[The source code of all examples]
+- link:https://github.com/koorchik/raku-livr-advent-calendar-post/tree/master/examples[The source code of all examples]
 - 文章 link:http://blog.webbylab.com/language-independent-validation-rules-library/[“LIVR – Data Validation Without Any Issues”]
 - link:http://livr-spec.org/[LIVR specifications and docs (the latest version – 2.0)]
 - link:https://github.com/koorchik/LIVR/tree/master/test_suite[Universal test suite]

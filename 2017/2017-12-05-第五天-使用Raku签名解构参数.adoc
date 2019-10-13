@@ -1,10 +1,10 @@
-== 第五天 - 使用 Perl 6 签名解构参数
+== 第五天 - 使用 Raku 签名解构参数
 
-在许多其他关键的 Perl 6 特性中，我认为 link:https://docs.perl6.org/type/Signature[Signatures] 是众多"杀手级"特性之一。 它们的功能如此丰富而强大，我怀疑关于如何使用它们可以写一整本书。 我想探索一下我原来忽略但是非常珍惜的一些特定功能。
+在许多其他关键的 Raku 特性中，我认为 link:https://docs.raku.org/type/Signature[Signatures] 是众多"杀手级"特性之一。 它们的功能如此丰富而强大，我怀疑关于如何使用它们可以写一整本书。 我想探索一下我原来忽略但是非常珍惜的一些特定功能。
 
 您可能已经看到了基本的子程序签名：
 
-```perl6
+```raku
 sub myfunc($x, $y, $z) {...}
 ```
 
@@ -14,36 +14,36 @@ sub myfunc($x, $y, $z) {...}
 
 你可以更有爱心, 给它们加上指定的类型:
 
-```perl6
+```raku
 sub myfunc(Str $x, Int $y, Rat $z) {...}
 ```
 
 你可以使用笑脸符号 `:D` 让参数值是有定义的:
 
-```perl6
+```raku
 sub myfunc(Str:D $x, Int:D $y, Rat:D $z) {...}
 ```
 
 还有很多其它花哨的说明符你可以使用，在这里我不深入了。
 
-但是如果你的参数更复杂呢？ （不是 link:https://docs.perl6.org/type/Complex[Complex] - 虽然它也起作用..）
+但是如果你的参数更复杂呢？ （不是 link:https://docs.raku.org/type/Complex[Complex] - 虽然它也起作用..）
 
 For example, you might want to restrict a specific parameter to a Positional argument like an Array, or an Associative one like a Hash using the respective sigils, @ or %.
 例如，你可能想要将特定的参数限制为像 Array 这样的 Positional 参数，或者使用相应的 @ 或 ％ 符号将这个参数限制为像 Hash 这样的关联参数。
 
-```perl6
+```raku
 sub myfunc(%h) {...}
 ```
 
 现在我可以使用一个散列来调用该函数:
 
-```perl6
+```raku
 myfunc(%( a => 1, b => 'this', c => 2.2));
 ```
 
 如果我想验证那些特定的字段是否存在，我可以把代码放在函数的顶部来做到这一点：
 
-```perl6
+```raku
 sub myfunc(%h) {
     die "a must be an Int" unless %h<a> ~~ Int;
     die "b must be a Str"  unless %h<b> ~~ Str;
@@ -53,7 +53,7 @@ sub myfunc(%h) {
 
 如果我还想简化引用那些字段的方式，我可以将它们赋值给其他变量：
 
-```perl6
+```raku
 sub myfunc(%h) {
     die "a must be an Int" unless %h<a> ~~ Int;
     die "b must be a Str"  unless %h<b> ~~ Str;
@@ -69,7 +69,7 @@ sub myfunc(%h) {
 
 Perl 签名参数解构来拯救你了！ 我们可以在子例程签名自身中做所有的事情 - 只要放一个子签名(sub-signature)在后面即可。
 
-```perl6
+```raku
 sub myfunc(%h (Int :$a, Str :$b, Rat :$c)) {...}
 ```
 
@@ -79,7 +79,7 @@ sub myfunc(%h (Int :$a, Str :$b, Rat :$c)) {...}
 
 假如说一块儿有嵌套结构的 JSON，某些部分可能缺失了, 它们需要默认值, 等等。
 
-```perl6
+```raku
 use JSON::Fast;
 my $item = from-json(q:to/END/);
     {
@@ -93,9 +93,9 @@ my $item = from-json(q:to/END/);
     END
 ```
 
-`q:to/END/` 是一个 Perl 6 link:https://docs.perl6.org/language/quoting#index-entry-quote_heredocs_%3Ato-Heredocs%3A_%3Ato[heredoc]，它直接在文本中直到 END，然后我们可以使用 link:https://github.com/timo/json_fast[JSON::Fast] 的 `from-json()` 将其解析为 perl 中的数据结构。 你可以在函数签名中描述整个 JSON 结构，以便接收以下内容：
+`q:to/END/` 是一个 Raku link:https://docs.raku.org/language/quoting#index-entry-quote_heredocs_%3Ato-Heredocs%3A_%3Ato[heredoc]，它直接在文本中直到 END，然后我们可以使用 link:https://github.com/timo/json_fast[JSON::Fast] 的 `from-json()` 将其解析为 perl 中的数据结构。 你可以在函数签名中描述整个 JSON 结构，以便接收以下内容：
 
-```perl6
+```raku
 sub myfunc(% (:%book (Str:D :$title, Str:D :$author), Int :$count,
               :@tags ($first-tag, *@other-tags)) )
 {...}
@@ -107,7 +107,7 @@ sub myfunc(% (:%book (Str:D :$title, Str:D :$author), Int :$count,
 
 当然，签名对于子程序来说是幻想的，但是你也可以在块儿(Block)中使用签名和解构。 假设你有一个上面的 JSON 条目的数组，并希望通过一个 `for` 循环遍历它们？ 只需在 `for` 的尖号块中使用解构签名即可：
 
-```perl6
+```raku
 for @itemlist -> % (:%book (Str:D :$title, Str:D :$author), Int :$count,
                     :@tags ($first-tag, *@other-tags))
 {
@@ -121,7 +121,7 @@ for @itemlist -> % (:%book (Str:D :$title, Str:D :$author), Int :$count,
 
 你有没有试过遍历一组对象，你所做的第一件事是调用一些访问器来获取一些属性？ 当然，你可以使用 `.attribute` 和 主题化的迭代器，但是使用子签名，你可以做更多。
 
-```perl6
+```raku
 class Book {
     has $.title;
     has $.author;
